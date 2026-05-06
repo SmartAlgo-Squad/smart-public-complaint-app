@@ -18,7 +18,7 @@ const API_BASE_URL = (() => {
         return 'http://127.0.0.1:5000';
     }
 
-    return 'https://smart-ai-backend.vercel.app';
+    return 'https://smart-public-complaints-backend.onrender.com';
 })();
 window.API_BASE_URL = API_BASE_URL;
 window.__API_BASE_URL__ = API_BASE_URL;

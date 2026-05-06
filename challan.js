@@ -17,7 +17,7 @@ const CHALLAN_API_BASE_URL = (() => {
         return 'http://127.0.0.1:5000';
     }
 
-    return 'https://smart-ai-backend.vercel.app';
+    return 'https://smart-public-complaints-backend.onrender.com';
 })();
 
 // ===============================
