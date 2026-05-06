@@ -4,6 +4,49 @@
 // Global State
 // ===============================
 let currentUser = null;
+let dashboardComplaintCache = [];
+let activeDashboardComplaintFilter = 'all';
+
+// Backend API base URL used for uploads and AI requests.
+// Local runs use the Express server on port 5000; deployed runs use the hosted backend.
+const API_BASE_URL = (() => {
+    const override = window.API_BASE_URL || window.__API_BASE_URL__;
+    if (override) return override.replace(/\/$/, '');
+
+    const hostname = window.location.hostname;
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://127.0.0.1:5000';
+    }
+
+    return 'https://smart-ai-backend.vercel.app';
+})();
+window.API_BASE_URL = API_BASE_URL;
+window.__API_BASE_URL__ = API_BASE_URL;
+
+// ===============================
+// Cloudinary Upload Function
+// ===============================
+async function uploadToCloudinary(file) {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE_URL}/api/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            throw new Error('Upload failed: ' + response.statusText);
+        }
+        
+        const data = await response.json();
+        return data.secure_url;
+    } catch (error) {
+        console.error('Cloudinary upload error:', error);
+        throw error;
+    }
+}
 
 // ===============================
 // Helper Functions
@@ -12,6 +55,56 @@ function showError(msg) {
     console.error("ERROR:", msg);
     alert("Error: " + msg);
 }
+
+// ===============================
+// Mobile sidebar toggle (responsive)
+// ===============================
+function toggleSidebar() {
+    const sb = document.querySelector('.sidebar');
+    if (!sb) return;
+    const overlayId = 'mobileOverlay';
+    const existing = document.getElementById(overlayId);
+    const willOpen = !sb.classList.contains('open');
+
+    sb.classList.toggle('open');
+
+    if (willOpen) {
+        // create overlay
+        if (!existing) {
+            const ov = document.createElement('div');
+            ov.id = overlayId;
+            ov.className = 'mobile-overlay visible';
+            ov.onclick = () => toggleSidebar();
+            document.body.appendChild(ov);
+        } else {
+            existing.classList.add('visible');
+        }
+        // prevent body scroll
+        document.body.style.overflow = 'hidden';
+    } else {
+        if (existing) existing.classList.remove('visible');
+        // remove overlay after transition
+        setTimeout(() => {
+            const el = document.getElementById(overlayId);
+            if (el) el.remove();
+        }, 300);
+        document.body.style.overflow = '';
+    }
+}
+
+// Close sidebar when clicking outside on small screens
+document.addEventListener('click', (e) => {
+    try {
+        if (window.innerWidth > 768) return;
+        const sb = document.querySelector('.sidebar');
+        const btn = document.getElementById('mobileMenuBtn');
+        if (!sb || !sb.classList.contains('open')) return;
+        if (btn && (e.target === btn || btn.contains(e.target))) return;
+        if (!sb.contains(e.target)) sb.classList.remove('open');
+    } catch (err) {
+        // ignore
+    }
+});
 
 function showSuccess(msg) {
     console.log("SUCCESS:", msg);
@@ -48,6 +141,8 @@ function switchTab(tabName, navItem) {
         setTimeout(() => loadUserSettings(), 100);
     } else if (tabName === 'ai-insights') {
         setTimeout(() => loadChatHistory(), 100);
+    } else if (tabName === 'my-challan-complaints') {
+        setTimeout(() => loadMyChallanComplaints(), 100);
     }
 }
 
@@ -56,150 +151,131 @@ function switchTab(tabName, navItem) {
 // ===============================
 function createComplaintElement(id, data) {
     const wrapper = document.createElement('div');
-    wrapper.className = 'complaint-item clickable-complaint';
+    wrapper.className = 'complaint-item';
     wrapper.dataset.status = (data.status || 'pending').toLowerCase();
-
-    const ts = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
-
-    let mediaHTML = '';
-    if (data.media && Array.isArray(data.media) && data.media.length > 0) {
-        const firstMedia = data.media[0];
-        if (firstMedia.type === 'image') {
-            mediaHTML = `<div style="margin-top:12px; margin-bottom:8px;">
-                <img src="${firstMedia.url}" alt="Complaint image" style="width:100%; max-height:200px; object-fit:cover; border-radius:8px; border:1px solid var(--border-color); cursor:pointer;" onclick="window.open('${firstMedia.url}', '_blank')">
-                ${data.media.length > 1 ? `<div style="margin-top:4px; font-size:11px; color:var(--text-secondary);">+${data.media.length - 1} more image${data.media.length > 2 ? 's' : ''}</div>` : ''}
-            </div>`;
-        }
-    }
-
-    const categoryDisplay = data.subCategory 
-        ? `${data.category || 'General'} - ${data.subCategory}`
-        : data.category || 'General';
-
-    wrapper.innerHTML = `
-        <div style="width:100%;">
-            <div style="display:flex;gap:10px;margin-bottom:6px; flex-wrap:wrap;">
-                <span style="color:#00d4ff;font-weight:600;">
-                    #${id.slice(0,6).toUpperCase()}
-                </span>
-                <span style="font-size:11px;background:rgba(0,212,255,.15);
-                    padding:2px 6px;border-radius:4px;" title="${categoryDisplay}">
-                    ${categoryDisplay.length > 30 ? categoryDisplay.substring(0, 30) + '...' : categoryDisplay}
-                </span>
-                ${data.media && data.media.length > 0 ? '<span style="font-size:11px;background:rgba(131,56,236,.15); padding:2px 6px;border-radius:4px;">📸 Media</span>' : ''}
-            </div>
-
-            <div class="complaint-title">${data.title || '(No title)'}</div>
-            <div class="complaint-desc">${data.description || ''}</div>
-            ${mediaHTML}
-            <div class="complaint-meta">
-                📍 ${data.location || 'N/A'} |
-                🕒 ${timeAgo(ts)} |
-                📌 ${(data.status || 'pending').toUpperCase()}
-            </div>
-        </div>
-    `;
-    // Make complaint clickable to view full details in a modal
-    wrapper.addEventListener('click', () => openUserComplaintModal(id, data));
-    return wrapper;
-}
-
-// ===============================
-// User Complaint Details Modal
-// ===============================
-function openUserComplaintModal(id, data) {
-    const existing = document.getElementById('userComplaintModal');
-    if (existing) existing.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'userComplaintModal';
-    overlay.style.cssText = `
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,0.85);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        backdrop-filter: blur(4px);
-    `;
-
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            closeUserComplaintModal();
-        }
-    });
 
     const ts = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
     const status = (data.status || 'pending').toLowerCase();
 
+    // Compact thumbnail images (max 3 shown)
     let mediaHTML = '';
     if (data.media && Array.isArray(data.media) && data.media.length > 0) {
-        mediaHTML = `
-            <div style="margin-top:24px;">
-                <h3 style="font-size:14px; color:var(--text-secondary); margin-bottom:12px; font-weight:600;">📸 Attached Media (${data.media.length})</h3>
-                <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px;">
-                    ${data.media.map(media => {
-                        if (media.type === 'image') {
-                            return `<div style="border-radius:8px; overflow:hidden; border:1px solid var(--border-color);">
-                                <img src="${media.url}" alt="${media.name || 'Image'}" style="width:100%; height:150px; object-fit:cover; cursor:pointer;" onclick="window.open('${media.url}', '_blank')">
-                            </div>`;
-                        } else if (media.type === 'video') {
-                            return `<div style="border-radius:8px; overflow:hidden; border:1px solid var(--border-color);">
-                                <video src="${media.url}" controls style="width:100%; height:150px; object-fit:cover;"></video>
-                            </div>`;
-                        }
-                        return '';
-                    }).join('')}
-                </div>
-            </div>
-        `;
+        const images = data.media.filter(m => m.type === 'image').slice(0, 3);
+        const extra  = data.media.filter(m => m.type === 'image').length - 3;
+        if (images.length > 0) {
+            mediaHTML = `<div class="complaint-thumb">
+                ${images.map(m => `<img class="complaint-thumb-img" src="${m.url}" alt="img" onclick="window.open('${m.url}','_blank')">`).join('')}
+                ${extra > 0 ? `<div class="complaint-thumb-more" onclick="window.open('${data.media[3]?.url || '#'}','_blank')">+${extra} more</div>` : ''}
+            </div>`;
+        }
     }
 
-    overlay.innerHTML = `
-        <div style="background:linear-gradient(135deg, var(--bg-card), rgba(0,212,255,0.05)); border:1px solid var(--border-color); border-radius:20px; max-width:800px; width:100%; max-height:90vh; overflow-y:auto; padding:0; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-            <div style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(131,56,236,0.1)); border-bottom:1px solid var(--border-color); padding:20px 28px; border-radius:20px 20px 0 0; position:sticky; top:0; z-index:10;">
-                <button onclick="closeUserComplaintModal()" style="position:absolute; top:16px; right:18px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:20px; cursor:pointer; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border-radius:50%; transition:all 0.3s ease;">×</button>
-                <div style="display:flex; flex-direction:column; gap:6px;">
-                    <div style="font-size:13px; color:var(--text-secondary);">Complaint ID: #${id.slice(0,6).toUpperCase()}</div>
-                    <h2 style="font-size:22px; margin:0; color:var(--primary-light);">${escapeHtml(data.title || 'Untitled Complaint')}</h2>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; font-size:12px;">
-                        <span style="background:rgba(0,212,255,.2); color:var(--primary-light); padding:4px 10px; border-radius:16px; font-weight:600;">${escapeHtml(data.category || 'General')}</span>
-                        ${data.subCategory ? `<span style="background:rgba(131,56,236,.2); color:#8338ec; padding:4px 10px; border-radius:16px; font-weight:600;">${escapeHtml(data.subCategory)}</span>` : ''}
-                        <span style="background:rgba(0,212,255,.12); color:var(--text-secondary); padding:4px 10px; border-radius:16px;">Status: ${(status || 'pending').toUpperCase()}</span>
-                    </div>
-                </div>
+    const categoryDisplay = data.subCategory
+        ? `${data.category || 'General'} › ${data.subCategory}`
+        : data.category || 'General';
+
+    const statusColors = {
+        pending: '#00d4ff', 'in-progress': '#fb5607', resolved: '#3a86ff', rejected: '#d62828'
+    };
+    const sColor = statusColors[status] || '#666';
+
+    // Rejection reason block
+    const rejectionHTML = (status === 'rejected' && data.rejectionReason)
+        ? `<div class="rejection-reason-banner">
+                <div class="rejection-reason-label">❌ Rejection Reason</div>
+                <div class="rejection-reason-text">${data.rejectionReason}</div>
+           </div>`
+        : '';
+
+    wrapper.innerHTML = `
+        <div style="width:100%;">
+            <div style="display:flex;gap:8px;margin-bottom:6px;flex-wrap:wrap;align-items:center;">
+                <span style="color:#00d4ff;font-weight:700;font-size:13px;">#${id.slice(0,6).toUpperCase()}</span>
+                <span style="font-size:11px;background:rgba(0,212,255,.15);padding:2px 8px;border-radius:10px;" title="${categoryDisplay}">${categoryDisplay.length > 28 ? categoryDisplay.substring(0,28)+'…' : categoryDisplay}</span>
+                <span style="font-size:11px;background:${sColor}20;color:${sColor};padding:2px 8px;border-radius:10px;font-weight:600;border:1px solid ${sColor}40;text-transform:uppercase;margin-left:auto;">${status.replace('-',' ')}</span>
             </div>
-            <div style="padding:24px 28px 28px;">
-                <div style="margin-bottom:20px;">
-                    <h3 style="font-size:14px; color:var(--primary-light); margin-bottom:10px;">📝 Full Description</h3>
-                    <div style="background:var(--bg-dark); border:1px solid var(--border-color); border-radius:12px; padding:16px; color:var(--text-primary); line-height:1.7; white-space:pre-wrap;">${escapeHtml(data.description || 'No description provided')}</div>
-                </div>
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px;">
-                    <div style="background:var(--bg-dark); border:1px solid var(--border-color); border-radius:12px; padding:14px;">
-                        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; margin-bottom:4px;">Location</div>
-                        <div style="font-size:14px; font-weight:600;">${escapeHtml(data.location || 'N/A')}</div>
-                    </div>
-                    <div style="background:var(--bg-dark); border:1px solid var(--border-color); border-radius:12px; padding:14px;">
-                        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; margin-bottom:4px;">Priority</div>
-                        <div style="font-size:14px; font-weight:600;">${escapeHtml(data.priority || 'Medium')}</div>
-                    </div>
-                    <div style="background:var(--bg-dark); border:1px solid var(--border-color); border-radius:12px; padding:14px;">
-                        <div style="font-size:11px; color:var(--text-secondary); text-transform:uppercase; margin-bottom:4px;">Created</div>
-                        <div style="font-size:14px; font-weight:600;">${ts.toLocaleString()}</div>
-                    </div>
-                </div>
-                ${mediaHTML}
+            <div class="complaint-title">${data.title || '(No title)'}</div>
+            <div class="complaint-desc">${data.description || ''}</div>
+            ${mediaHTML}
+            ${rejectionHTML}
+            <div class="complaint-meta" style="margin-top:8px;">
+                📍 ${data.location || 'N/A'} &nbsp;·&nbsp; 🕒 ${timeAgo(ts)}
             </div>
         </div>
     `;
-
-    document.body.appendChild(overlay);
+    return wrapper;
 }
 
-function closeUserComplaintModal() {
-    const modal = document.getElementById('userComplaintModal');
-    if (modal) modal.remove();
+function normalizeComplaintStatus(status) {
+    const value = (status || 'pending').toLowerCase();
+    if (value === 'open') return 'pending';
+    return value;
+}
+
+function getDashboardComplaintBucket(data) {
+    const status = normalizeComplaintStatus(data.status);
+    if (status === 'resolved') return 'resolved';
+    if (status === 'in-progress') return 'in-progress';
+    return 'pending';
+}
+
+function renderDashboardComplaintFilterSummary() {
+    const summary = document.getElementById('dashboardFilterSummary');
+    const total = dashboardComplaintCache.length;
+    const current = activeDashboardComplaintFilter;
+
+    if (!summary) return;
+
+    const labelMap = {
+        all: 'All complaints',
+        pending: 'Pending complaints',
+        'in-progress': 'In progress complaints',
+        resolved: 'Resolved complaints',
+    };
+
+    summary.textContent = `${labelMap[current] || 'All complaints'} · ${total} total`;
+}
+
+function setDashboardComplaintFilter(status, sourceEl) {
+    activeDashboardComplaintFilter = status;
+
+    document.querySelectorAll('.stat-card[data-filter]').forEach(card => {
+        card.classList.toggle('is-active', card.dataset.filter === status);
+        card.setAttribute('aria-pressed', card.dataset.filter === status ? 'true' : 'false');
+    });
+
+    document.querySelectorAll('#dashboardStatusFilters .filter-btn').forEach(btn => {
+        const btnStatus = btn.dataset.status || 'all';
+        btn.classList.toggle('active', btnStatus === status || (status === 'pending' && btnStatus === 'open'));
+    });
+
+    renderDashboardComplaintList();
+    renderDashboardComplaintFilterSummary();
+
+    if (sourceEl && typeof sourceEl.scrollIntoView === 'function') {
+        sourceEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function renderDashboardComplaintList() {
+    const el = document.getElementById('recentComplaintsList');
+    if (!el) return;
+
+    const filteredDocs = dashboardComplaintCache.filter(doc => {
+        const bucket = getDashboardComplaintBucket(doc);
+        if (activeDashboardComplaintFilter === 'all') return true;
+        return bucket === activeDashboardComplaintFilter;
+    });
+
+    if (!filteredDocs.length) {
+        el.innerHTML = `<p style="color:var(--text-secondary);padding:16px 0;">No complaints found for this filter.</p>`;
+        return;
+    }
+
+    el.innerHTML = '';
+    filteredDocs.forEach(doc => {
+        el.appendChild(createComplaintElement(doc.id, doc));
+    });
 }
 
 // ===============================
@@ -220,35 +296,65 @@ function loadComplaintStats() {
             let inProgress = 0;
             let resolved = 0;
 
+            dashboardComplaintCache = [];
+
             snapshot.forEach(doc => {
+                const data = doc.data();
+                if (data.complaintType === 'challan') return; // Ignore challans in general stats
+
+                dashboardComplaintCache.push({ id: doc.id, ...data });
                 total++;
-                const s = (doc.data().status || 'pending').toLowerCase();
+                const s = normalizeComplaintStatus(data.status);
                 if (s === 'resolved') resolved++;
                 else if (s === 'in-progress') inProgress++;
                 else pending++;
             });
 
+            dashboardComplaintCache.sort((a, b) => {
+                const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                return tb - ta;
+            });
+
             const rate = total ? Math.round((resolved / total) * 100) : 0;
 
             grid.innerHTML = `
-                <div class="stat-card">
+                <div class="stat-card" data-filter="all" role="button" tabindex="0" aria-pressed="${activeDashboardComplaintFilter === 'all'}">
                     <div class="stat-label">📤 Total</div>
                     <div class="stat-value">${total}</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" data-filter="pending" role="button" tabindex="0" aria-pressed="${activeDashboardComplaintFilter === 'pending'}">
                     <div class="stat-label">⏳ Pending</div>
                     <div class="stat-value">${pending}</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" data-filter="in-progress" role="button" tabindex="0" aria-pressed="${activeDashboardComplaintFilter === 'in-progress'}">
                     <div class="stat-label">🛠 In Progress</div>
                     <div class="stat-value">${inProgress}</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card" data-filter="resolved" role="button" tabindex="0" aria-pressed="${activeDashboardComplaintFilter === 'resolved'}">
                     <div class="stat-label">✅ Resolved</div>
                     <div class="stat-value">${resolved}</div>
                     <div class="stat-change">${rate}% success</div>
                 </div>
             `;
+
+            grid.querySelectorAll('.stat-card[data-filter]').forEach(card => {
+                card.addEventListener('click', () => setDashboardComplaintFilter(card.dataset.filter, card));
+                card.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setDashboardComplaintFilter(card.dataset.filter, card);
+                    }
+                });
+                card.classList.toggle('is-active', card.dataset.filter === activeDashboardComplaintFilter);
+            });
+
+            if (activeDashboardComplaintFilter !== 'all' && !dashboardComplaintCache.some(doc => getDashboardComplaintBucket(doc) === activeDashboardComplaintFilter)) {
+                activeDashboardComplaintFilter = 'all';
+            }
+
+            renderDashboardComplaintList();
+            renderDashboardComplaintFilterSummary();
         }, err => {
             console.error(err);
             grid.innerHTML = '<p style="color:red;padding:20px;">Failed to load stats</p>';
@@ -267,7 +373,6 @@ function loadRecentComplaints() {
     firebaseDB
         .collection('complaints')
         .where('authorId', '==', currentUser.uid)
-        .limit(5)
         .onSnapshot(snapshot => {
             el.innerHTML = '';
 
@@ -275,57 +380,46 @@ function loadRecentComplaints() {
                 el.innerHTML = '<p>No complaints yet.</p>';
                 return;
             }
-
+            
+            const docs = [];
             snapshot.forEach(doc => {
-                el.appendChild(createComplaintElement(doc.id, doc.data()));
+                const data = doc.data();
+                if (data.complaintType !== 'challan') {
+                    docs.push({ id: doc.id, ...data });
+                }
             });
 
-            // Apply active filter to the freshly loaded list
-            const activeBtn = document.querySelector('#dashboard .filter-btn.active');
-            const status = activeBtn?.dataset.status || 'all';
-            filterRecentComplaints(status);
+            if (!dashboardComplaintCache.length) {
+                dashboardComplaintCache = [...docs];
+                dashboardComplaintCache.sort((a, b) => {
+                    const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                    const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                    return tb - ta;
+                });
+            }
+            
+            // Sort manually
+            docs.sort((a, b) => {
+                const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                return tb - ta;
+            });
+            
+            const recentDocs = docs.slice(0, 5);
+
+            if (activeDashboardComplaintFilter === 'all') {
+                el.innerHTML = '';
+                recentDocs.forEach(d => {
+                    el.appendChild(createComplaintElement(d.id, d));
+                });
+            } else {
+                renderDashboardComplaintList();
+                renderDashboardComplaintFilterSummary();
+            }
         }, err => {
             console.error(err);
             el.innerHTML = '<p>Error loading recent complaints</p>';
         });
-}
-
-// ===============================
-// Recent Complaints Filters
-// ===============================
-function filterRecentComplaints(status) {
-    const list = document.getElementById('recentComplaintsList');
-    if (!list) return;
-
-    const items = list.querySelectorAll('.complaint-item');
-    let allowedStatuses = null;
-
-    switch (status) {
-        case 'all':
-            allowedStatuses = null;
-            break;
-        case 'open':
-            // Treat "Open" as pending complaints
-            allowedStatuses = ['pending'];
-            break;
-        case 'in-progress':
-            allowedStatuses = ['in-progress'];
-            break;
-        case 'resolved':
-            allowedStatuses = ['resolved'];
-            break;
-        default:
-            allowedStatuses = [status];
-    }
-
-    items.forEach(item => {
-        const itemStatus = item.dataset.status || 'pending';
-        if (!allowedStatuses || allowedStatuses.includes(itemStatus)) {
-            item.style.display = 'flex';
-        } else {
-            item.style.display = 'none';
-        }
-    });
 }
 
 // ===============================
@@ -351,9 +445,31 @@ function loadMyComplaints() {
                 return;
             }
 
+            const docs = [];
             snapshot.forEach(doc => {
-                el.appendChild(createComplaintElement(doc.id, doc.data()));
+                const data = doc.data();
+                if (data.complaintType !== 'challan') {
+                    docs.push({ id: doc.id, ...data });
+                }
             });
+
+            // Sort manually
+            docs.sort((a, b) => {
+                const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+                const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+                return tb - ta;
+            });
+
+            dashboardComplaintCache = [...docs];
+
+            docs.forEach(d => {
+                el.appendChild(createComplaintElement(d.id, d));
+            });
+
+            if (activeDashboardComplaintFilter !== 'all') {
+                renderDashboardComplaintList();
+                renderDashboardComplaintFilterSummary();
+            }
         }, err => {
             console.error(err);
             el.innerHTML = '<p>Error loading complaints</p>';
@@ -674,7 +790,8 @@ function applySuggestedCategory() {
 // ===============================
 // Media Upload Handler
 // ===============================
-let uploadedMediaFiles = [];
+let uploadedMediaFiles = []; // array of { id: string, file: File }
+const uploadTasks = {}; // map fileId -> firebase upload task
 
 function handleMediaUpload(event) {
     const files = Array.from(event.target.files);
@@ -690,11 +807,12 @@ function handleMediaUpload(event) {
             return;
         }
         
-        uploadedMediaFiles.push(file);
+        const uid = `${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        uploadedMediaFiles.push({ id: uid, file });
         
         const mediaItem = document.createElement('div');
         mediaItem.className = 'media-preview-item';
-        mediaItem.dataset.fileName = file.name;
+        mediaItem.dataset.fileId = uid;
         
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
@@ -704,8 +822,15 @@ function handleMediaUpload(event) {
                         <img src="${e.target.result}" alt="${file.name}" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">
                         <div class="media-preview-info">
                             <span style="font-size:12px; color:var(--text-secondary);">${file.name}</span>
-                            <button type="button" onclick="removeMediaFile('${file.name}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:18px;">×</button>
+                            <div style="display:flex; gap:8px;">
+                              <button type="button" onclick="replaceMediaFile('${uid}')" style="background:none; border:none; color:var(--primary-light); cursor:pointer; font-size:13px;">Replace</button>
+                              <button type="button" onclick="removeMediaFile('${uid}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:18px;">×</button>
+                            </div>
                         </div>
+                    </div>
+                    <div style="margin-top:8px;">
+                      <div class="progress-bar upload-progress" style="display:none;"><div class="progress-fill" style="width:0%"></div></div>
+                      <button type="button" class="upload-cancel-btn" data-file-id="${uid}" onclick="cancelUpload('${uid}')" style="display:none; background:none; border:none; color:var(--danger); cursor:pointer; font-size:13px;">Cancel Upload</button>
                     </div>
                 `;
             };
@@ -718,8 +843,15 @@ function handleMediaUpload(event) {
                         <video src="${e.target.result}" controls style="width:100%; height:150px; object-fit:cover; border-radius:8px;"></video>
                         <div class="media-preview-info">
                             <span style="font-size:12px; color:var(--text-secondary);">${file.name}</span>
-                            <button type="button" onclick="removeMediaFile('${file.name}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:18px;">×</button>
+                            <div style="display:flex; gap:8px;">
+                              <button type="button" onclick="replaceMediaFile('${uid}')" style="background:none; border:none; color:var(--primary-light); cursor:pointer; font-size:13px;">Replace</button>
+                              <button type="button" onclick="removeMediaFile('${uid}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:18px;">×</button>
+                            </div>
                         </div>
+                    </div>
+                    <div style="margin-top:8px;">
+                      <div class="progress-bar upload-progress" style="display:none;"><div class="progress-fill" style="width:0%"></div></div>
+                      <button type="button" class="upload-cancel-btn" data-file-id="${uid}" onclick="cancelUpload('${uid}')" style="display:none; background:none; border:none; color:var(--danger); cursor:pointer; font-size:13px;">Cancel Upload</button>
                     </div>
                 `;
             };
@@ -728,20 +860,109 @@ function handleMediaUpload(event) {
         
         previewDiv.appendChild(mediaItem);
         previewDiv.style.display = 'grid';
+        const clearBtn = document.getElementById('clearMediaBtn');
+        if (clearBtn) clearBtn.style.display = 'block';
     });
     
     event.target.value = ''; // Reset input
 }
 
-function removeMediaFile(fileName) {
-    uploadedMediaFiles = uploadedMediaFiles.filter(f => f.name !== fileName);
-    const item = document.querySelector(`[data-file-name="${fileName}"]`);
+function removeMediaFile(fileId) {
+    // If there is an active upload task, cancel it first
+    if (uploadTasks[fileId]) {
+        try { uploadTasks[fileId].cancel(); } catch (e) { /* ignore */ }
+        delete uploadTasks[fileId];
+    }
+    uploadedMediaFiles = uploadedMediaFiles.filter(obj => obj.id !== fileId);
+    const item = document.querySelector(`[data-file-id="${fileId}"]`);
     if (item) item.remove();
     
     const previewDiv = document.getElementById('mediaPreview');
     if (uploadedMediaFiles.length === 0) {
         previewDiv.style.display = 'none';
+        const clearBtn = document.getElementById('clearMediaBtn');
+        if (clearBtn) clearBtn.style.display = 'none';
     }
+}
+
+function cancelUpload(fileId) {
+    const task = uploadTasks[fileId];
+    if (task && typeof task.cancel === 'function') {
+        try {
+            task.cancel();
+        } catch (err) {
+            console.error('Failed to cancel upload:', err);
+        }
+    }
+    // remove UI and array entry
+    removeMediaFile(fileId);
+}
+
+function clearAllMediaUploads() {
+    uploadedMediaFiles = [];
+    const previewDiv = document.getElementById('mediaPreview');
+    if (previewDiv) {
+        previewDiv.innerHTML = '';
+        previewDiv.style.display = 'none';
+    }
+    const clearBtn = document.getElementById('clearMediaBtn');
+    if (clearBtn) clearBtn.style.display = 'none';
+}
+
+// Replace a specific uploaded file (preserve order)
+function replaceMediaFile(fileId) {
+    const existingIndex = uploadedMediaFiles.findIndex(obj => obj.id === fileId);
+    if (existingIndex === -1) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,video/*';
+    input.onchange = (e) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        const file = files[0];
+        const maxSize = file.type.startsWith('video/') ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+        if (file.size > maxSize) {
+            showError(`${file.name} is too large. Max size: ${file.type.startsWith('video/') ? '50MB' : '10MB'}`);
+            return;
+        }
+
+        // replace in array
+        uploadedMediaFiles[existingIndex].file = file;
+
+        // update preview
+        const mediaItem = document.querySelector(`[data-file-id="${fileId}"]`);
+        if (!mediaItem) return;
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            if (file.type.startsWith('image/')) {
+                mediaItem.querySelector('.media-preview-content').innerHTML = `
+                    <img src="${ev.target.result}" alt="${file.name}" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">
+                    <div class="media-preview-info">
+                        <span style="font-size:12px; color:var(--text-secondary);">${file.name}</span>
+                        <div style="display:flex; gap:8px;">
+                          <button type="button" onclick="replaceMediaFile('${fileId}')" style="background:none; border:none; color:var(--primary-light); cursor:pointer; font-size:13px;">Replace</button>
+                          <button type="button" onclick="removeMediaFile('${fileId}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:18px;">×</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                mediaItem.querySelector('.media-preview-content').innerHTML = `
+                    <video src="${ev.target.result}" controls style="width:100%; height:150px; object-fit:cover; border-radius:8px;"></video>
+                    <div class="media-preview-info">
+                        <span style="font-size:12px; color:var(--text-secondary);">${file.name}</span>
+                        <div style="display:flex; gap:8px;">
+                          <button type="button" onclick="replaceMediaFile('${fileId}')" style="background:none; border:none; color:var(--primary-light); cursor:pointer; font-size:13px;">Replace</button>
+                          <button type="button" onclick="removeMediaFile('${fileId}')" style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:18px;">×</button>
+                        </div>
+                    </div>
+                `;
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+    input.click();
 }
 
 // ===============================
@@ -872,20 +1093,35 @@ async function handleComplaintSubmit(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = '⏳ Uploading...';
 
-    // Upload media files first
+    // Upload media files first using Cloudinary
     const mediaUrls = [];
-    if (uploadedMediaFiles.length > 0 && window.firebaseStorage) {
+    if (uploadedMediaFiles.length > 0) {
         try {
-            for (const file of uploadedMediaFiles) {
-                const fileName = `${currentUser.uid}/${Date.now()}_${file.name}`;
-                const storageRef = firebaseStorage.ref().child(`complaints/${fileName}`);
-                await storageRef.put(file);
-                const url = await storageRef.getDownloadURL();
-                mediaUrls.push({
-                    url,
-                    type: file.type.startsWith('video/') ? 'video' : 'image',
-                    name: file.name
-                });
+            // upload sequentially
+            for (const item of [...uploadedMediaFiles]) {
+                const file = item.file;
+                
+                // show progress UI
+                const progressBar = document.querySelector(`[data-file-id="${item.id}"] .upload-progress`);
+                const progressFill = progressBar ? progressBar.querySelector('.progress-fill') : null;
+                const cancelBtn = document.querySelector(`[data-file-id="${item.id}"] .upload-cancel-btn`);
+                if (progressBar) progressBar.style.display = 'block';
+                if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+                try {
+                    const url = await uploadToCloudinary(file);
+                    if (url) {
+                        mediaUrls.push({ 
+                            url, 
+                            type: file.type.startsWith('video/') ? 'video' : 'image', 
+                            name: file.name 
+                        });
+                    }
+                    if (progressFill) progressFill.style.width = '100%';
+                } catch (err) {
+                    console.error('Error uploading file:', err);
+                    throw err;
+                }
             }
         } catch (error) {
             console.error('Error uploading media:', error);
@@ -944,6 +1180,8 @@ async function handleComplaintSubmit(e) {
         document.getElementById('mediaPreview').innerHTML = '';
         document.getElementById('mediaPreview').style.display = 'none';
         uploadedMediaFiles = [];
+        const clearBtn = document.getElementById('clearMediaBtn');
+        if (clearBtn) clearBtn.style.display = 'none';
         currentGeolocation = null;
         suggestedCategory = null;
         
@@ -975,19 +1213,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Wire up Recent Complaints filter buttons
-    document.querySelectorAll('#dashboard .filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const status = btn.dataset.status || 'all';
-
-            document.querySelectorAll('#dashboard .filter-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            filterRecentComplaints(status);
-        });
-    });
-
     const submitBtn = document.getElementById('submitComplaintBtn');
     if (submitBtn) submitBtn.addEventListener('click', handleComplaintSubmit);
 
@@ -1011,10 +1236,28 @@ document.addEventListener('DOMContentLoaded', () => {
             initVoiceRecognition();
         }
 
+        // Initialize challan file upload listeners
+        if (typeof initChallanUploads === 'function') {
+            initChallanUploads();
+        }
+
+        // Setup vehicle type radio card visual highlight
+        document.querySelectorAll('input[name="vehicleType"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.querySelectorAll('.challan-vehicle-card-inner').forEach(c => c.classList.remove('selected'));
+                if (radio.checked) {
+                    radio.closest('.challan-vehicle-card').querySelector('.challan-vehicle-card-inner').classList.add('selected');
+                }
+            });
+        });
+
         switchTab(
             'dashboard',
             document.querySelector('[data-tab="dashboard"]')
         );
+
+        // Initialize dashboard location widget
+        setTimeout(() => initDashboardLocation(), 500);
     });
 });
 
@@ -1088,125 +1331,160 @@ function calculateUserAnalytics(complaints) {
 }
 
 function displayUserAnalytics(stats, complaints, container) {
+    const pending   = stats.byStatus.pending || 0;
+    const inProgress= stats.byStatus['in-progress'] || 0;
+    const resolved  = stats.byStatus.resolved || 0;
+    const rejected  = stats.byStatus.rejected || 0;
+
     container.style.textAlign = 'left';
-    container.style.padding = '28px';
+    container.style.padding   = '0';
+
+    if (stats.total === 0) {
+        container.innerHTML = `
+            <div class="analytics-empty">
+                <div class="analytics-empty-icon">📊</div>
+                <h3 style="color:var(--text-secondary);margin-bottom:8px;">No Complaint Data Yet</h3>
+                <p style="color:var(--text-secondary);font-size:14px;">Submit your first complaint to see analytics here.</p>
+            </div>`;
+        return;
+    }
+
+    // Build category bars
+    const catEntries = Object.entries(stats.byCategory).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    const catMax = catEntries.length ? catEntries[0][1] : 1;
+    const catColors = ['#00d4ff','#8338ec','#ff006e','#fb5607','#3a86ff','#51cf66'];
+    const catBarsHTML = catEntries.map(([cat, cnt], i) => {
+        const pct = Math.round((cnt/catMax)*100);
+        return `<div class="analytics-bar-row">
+            <div class="analytics-bar-header">
+                <span class="analytics-bar-label">${cat}</span>
+                <span class="analytics-bar-count">${cnt} complaint${cnt>1?'s':''}</span>
+            </div>
+            <div class="analytics-bar-track"><div class="analytics-bar-fill" style="width:${pct}%;background:${catColors[i%catColors.length]};"></div></div>
+        </div>`;
+    }).join('');
+
+    // Status legend
+    const statusCfg = [
+        { key:'pending',     label:'Pending',     color:'#00d4ff', count: pending },
+        { key:'in-progress', label:'In Progress', color:'#fb5607', count: inProgress },
+        { key:'resolved',    label:'Resolved',    color:'#51cf66', count: resolved },
+        { key:'rejected',    label:'Rejected',    color:'#d62828', count: rejected },
+    ];
+    const statusBarsHTML = statusCfg.map(s => {
+        const pct = stats.total > 0 ? Math.round((s.count/stats.total)*100) : 0;
+        return `<div class="analytics-bar-row">
+            <div class="analytics-bar-header">
+                <span class="analytics-bar-label" style="color:${s.color};">${s.label}</span>
+                <span class="analytics-bar-count">${s.count} (${pct}%)</span>
+            </div>
+            <div class="analytics-bar-track"><div class="analytics-bar-fill" style="width:${pct}%;background:${s.color};"></div></div>
+        </div>`;
+    }).join('');
+
+    // Monthly trend bars
+    const monthEntries = Object.entries(stats.monthlyTrend).sort().slice(-6);
+    const monthMax = monthEntries.length ? Math.max(...monthEntries.map(e=>e[1]),1) : 1;
+    const monthGradients = ['linear-gradient(180deg,#00d4ff,#3a86ff)','linear-gradient(180deg,#8338ec,#00d4ff)','linear-gradient(180deg,#ff006e,#8338ec)','linear-gradient(180deg,#fb5607,#ff006e)','linear-gradient(180deg,#3a86ff,#51cf66)','linear-gradient(180deg,#51cf66,#3a86ff)'];
+    const monthBarsHTML = monthEntries.map(([mk, cnt], i) => {
+        const heightPct = Math.round((cnt/monthMax)*100);
+        const label = new Date(mk+'-01').toLocaleDateString('en-US',{month:'short'});
+        return `<div class="analytics-month-bar" style="max-width:60px;">
+            <div class="analytics-month-bar-fill" style="height:${heightPct}%;background:${monthGradients[i%monthGradients.length]};box-shadow:0 4px 14px rgba(0,212,255,0.3);">
+                <span class="analytics-month-count">${cnt}</span>
+            </div>
+            <span class="analytics-month-label">${label}</span>
+        </div>`;
+    }).join('');
 
     container.innerHTML = `
-        <div class="stats-grid" style="margin-bottom:32px;">
-            <div class="stat-card">
-                <div class="stat-label">Total Complaints</div>
-                <div class="stat-value">${stats.total}</div>
+        <!-- KPI Hero Cards -->
+        <div class="analytics-hero">
+            <div class="analytics-stat-card">
+                <span class="analytics-stat-icon">📤</span>
+                <div class="analytics-stat-value">${stats.total}</div>
+                <div class="analytics-stat-label">Total Complaints</div>
+                <span class="analytics-stat-badge" style="background:rgba(0,212,255,0.15);color:#00d4ff;">All time</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Success Rate</div>
-                <div class="stat-value">${stats.successRate}%</div>
-                <div class="stat-change">${stats.byStatus.resolved} resolved</div>
+            <div class="analytics-stat-card">
+                <span class="analytics-stat-icon">✅</span>
+                <div class="analytics-stat-value" style="background:linear-gradient(135deg,#51cf66,#3a86ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${stats.successRate}%</div>
+                <div class="analytics-stat-label">Success Rate</div>
+                <span class="analytics-stat-badge" style="background:rgba(81,207,102,0.15);color:#51cf66;">${resolved} resolved</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Avg Resolution</div>
-                <div class="stat-value">${stats.avgResolutionTime}d</div>
-                <div class="stat-change">${stats.resolutionTime.length} resolved complaints</div>
+            <div class="analytics-stat-card">
+                <span class="analytics-stat-icon">⏱️</span>
+                <div class="analytics-stat-value" style="background:linear-gradient(135deg,#fb5607,#ffd60a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${stats.avgResolutionTime}d</div>
+                <div class="analytics-stat-label">Avg Resolution</div>
+                <span class="analytics-stat-badge" style="background:rgba(251,86,7,0.15);color:#fb5607;">${stats.resolutionTime.length} cases</span>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">Pending</div>
-                <div class="stat-value">${stats.byStatus.pending}</div>
-            </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(350px, 1fr)); gap:24px; margin-bottom:32px;">
-            <div class="chart-container">
-                <div class="chart-title">📊 Status Distribution</div>
-                <div style="margin-top:20px;">
-                    ${renderStatusChart(stats.byStatus)}
-                </div>
-            </div>
-
-            <div class="chart-container">
-                <div class="chart-title">📂 Categories</div>
-                <div style="margin-top:20px;">
-                    ${renderCategoryChartUser(stats.byCategory)}
-                </div>
+            <div class="analytics-stat-card">
+                <span class="analytics-stat-icon">⏳</span>
+                <div class="analytics-stat-value" style="background:linear-gradient(135deg,#d62828,#ff006e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${pending}</div>
+                <div class="analytics-stat-label">Still Pending</div>
+                <span class="analytics-stat-badge" style="background:rgba(214,40,40,0.15);color:#d62828;">${stats.total>0?Math.round((pending/stats.total)*100):0}% of total</span>
             </div>
         </div>
 
-        <div class="chart-container">
-            <div class="chart-title">🎯 Complaints by Priority</div>
-            <div style="margin-top:20px;">
-                ${renderPriorityChartUser(stats.byPriority)}
+        <!-- Charts Grid -->
+        <div class="analytics-chart-grid">
+            <div class="analytics-chart-card">
+                <div class="analytics-chart-title">📊 Status Breakdown</div>
+                ${statusBarsHTML}
+            </div>
+
+            <div class="analytics-chart-card">
+                <div class="analytics-chart-title">📂 Top Categories</div>
+                ${catBarsHTML || '<div class="analytics-empty" style="padding:20px;"><p>No category data</p></div>'}
+            </div>
+        </div>
+
+        <!-- Monthly Trend -->
+        <div class="analytics-chart-card" style="margin-bottom:0;">
+            <div class="analytics-chart-title">📅 Monthly Activity (Last 6 Months)</div>
+            <div class="analytics-monthly-chart">
+                ${monthBarsHTML || '<p style="color:var(--text-secondary);padding:20px;">No monthly data available</p>'}
             </div>
         </div>
     `;
 }
 
 function renderStatusChart(byStatus) {
-    const total = Object.values(byStatus).reduce((a, b) => a + b, 0);
+    // Kept for backward compatibility but analytics now uses displayUserAnalytics directly
+    const total = Object.values(byStatus).reduce((a,b)=>a+b,0);
     if (total === 0) return '<p style="color:var(--text-secondary);">No data available</p>';
-
-    const colors = {
-        pending: '#00d4ff',
-        'in-progress': '#fb5607',
-        resolved: '#3a86ff',
-        rejected: '#d62828'
-    };
-
-    return Object.entries(byStatus).map(([status, count]) => {
-        const percent = Math.round((count / total) * 100);
-        const color = colors[status] || '#666';
-        return `
-            <div style="margin-bottom:16px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="text-transform:uppercase; font-weight:600;">${status.replace('-', ' ')}</span>
-                    <span style="color:var(--text-secondary);">${count} (${percent}%)</span>
-                </div>
-                <div style="width:100%; height:24px; background:var(--bg-dark); border-radius:12px; overflow:hidden;">
-                    <div style="width:${percent}%; height:100%; background:${color}; transition:width 0.5s ease;"></div>
-                </div>
-            </div>
-        `;
+    const colors = { pending:'#00d4ff', 'in-progress':'#fb5607', resolved:'#3a86ff', rejected:'#d62828' };
+    return Object.entries(byStatus).map(([s,c]) => {
+        const pct = Math.round((c/total)*100);
+        return `<div class="analytics-bar-row"><div class="analytics-bar-header"><span class="analytics-bar-label" style="text-transform:capitalize;">${s.replace('-',' ')}</span><span class="analytics-bar-count">${c} (${pct}%)</span></div><div class="analytics-bar-track"><div class="analytics-bar-fill" style="width:${pct}%;background:${colors[s]||'#666'};"></div></div></div>`;
     }).join('');
 }
 
 function renderCategoryChartUser(byCategory) {
-    const entries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
-    if (entries.length === 0) return '<p style="color:var(--text-secondary);">No category data</p>';
-
-    const max = Math.max(...entries.map(e => e[1]));
-    const colors = ['#00d4ff', '#8338ec', '#ff006e', '#fb5607', '#3a86ff'];
-
-    return entries.slice(0, 5).map(([category, count], index) => {
-        const percent = max > 0 ? Math.round((count / max) * 100) : 0;
-        return `
-            <div style="margin-bottom:16px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
-                    <span style="font-weight:600;">${category}</span>
-                    <span style="color:var(--text-secondary);">${count}</span>
-                </div>
-                <div style="width:100%; height:20px; background:var(--bg-dark); border-radius:10px; overflow:hidden;">
-                    <div style="width:${percent}%; height:100%; background:${colors[index % colors.length]}; transition:width 0.5s ease;"></div>
-                </div>
-            </div>
-        `;
+    const entries = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if (!entries.length) return '<p style="color:var(--text-secondary);">No category data</p>';
+    const max = entries[0][1];
+    const colors = ['#00d4ff','#8338ec','#ff006e','#fb5607','#3a86ff'];
+    return entries.map(([cat,cnt],i) => {
+        const pct = Math.round((cnt/max)*100);
+        return `<div class="analytics-bar-row"><div class="analytics-bar-header"><span class="analytics-bar-label">${cat}</span><span class="analytics-bar-count">${cnt}</span></div><div class="analytics-bar-track"><div class="analytics-bar-fill" style="width:${pct}%;background:${colors[i]};"></div></div></div>`;
     }).join('');
 }
-function renderPriorityChartUser(byPriority) {
-    const total = Object.values(byPriority).reduce((a, b) => a + b, 0);
-    if (total === 0) return '<p style="color:var(--text-secondary);">No priority data</p>';
 
-    const colors = { Low: '#00d4ff', Medium: '#3a86ff', High: '#fb5607', Critical: '#d62828' };
-
-    return Object.entries(byPriority).map(([priority, count]) => {
-        const percent = Math.round((count / total) * 100);
-        const color = colors[priority] || '#666';
-        return `
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                <div style="width:70px; text-align:right; font-weight:600;">${priority}</div>
-                <div style="flex:1; height:22px; background:var(--bg-dark); border-radius:12px; overflow:hidden; position:relative;">
-                    <div style="width:${percent}%; height:100%; background:${color}; transition:width 0.5s ease;"></div>
-                    <span style="position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:12px; font-weight:600;">${count} (${percent}%)</span>
-                </div>
-            </div>
-        `;
-    }).join('');
+function renderMonthlyTrendUser(monthlyTrend) {
+    const entries = Object.entries(monthlyTrend).sort().slice(-6);
+    if (!entries.length) return '<p style="color:var(--text-secondary);">No data available</p>';
+    const max = Math.max(...entries.map(e=>e[1]),1);
+    const colors = ['#00d4ff','#8338ec','#ff006e','#fb5607','#3a86ff','#51cf66'];
+    return `<div style="display:flex;align-items:flex-end;gap:12px;height:160px;">${entries.map(([m,c],i)=>{
+        const h = Math.round((c/max)*100);
+        const label = new Date(m+'-01').toLocaleDateString('en-US',{month:'short'});
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;">
+            <span style="font-size:11px;font-weight:700;">${c}</span>
+            <div style="width:100%;background:${colors[i%colors.length]};height:${h}%;border-radius:6px 6px 0 0;box-shadow:0 4px 12px ${colors[i%colors.length]}40;min-height:4px;"></div>
+            <span style="font-size:10px;color:var(--text-secondary);">${label}</span>
+        </div>`;
+    }).join('')}</div>`;
 }
 
 // ===============================
@@ -1301,6 +1579,39 @@ function loadHelpCenter() {
             </div>
         </div>
 
+        <div class="complaints-section" style="margin-top:24px;">
+            <div class="section-header">
+                <div class="section-title">📖 User Guides</div>
+            </div>
+
+            <div style="margin-top:24px;">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px;">
+                    <a href="#" onclick="alert('Guide coming soon!'); return false;" style="padding:20px; background:var(--bg-dark); border-radius:12px; border:1px solid var(--border-color); text-decoration:none; color:var(--text-primary); transition:all 0.3s ease;" onmouseover="this.style.borderColor='var(--primary-light)'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)'">
+                        <div style="font-size:24px; margin-bottom:8px;">🚀</div>
+                        <div style="font-weight:700; margin-bottom:4px;">Getting Started</div>
+                        <div style="font-size:12px; color:var(--text-secondary);">Learn the basics</div>
+                    </a>
+
+                    <a href="#" onclick="alert('Guide coming soon!'); return false;" style="padding:20px; background:var(--bg-dark); border-radius:12px; border:1px solid var(--border-color); text-decoration:none; color:var(--text-primary); transition:all 0.3s ease;" onmouseover="this.style.borderColor='var(--primary-light)'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)'">
+                        <div style="font-size:24px; margin-bottom:8px;">📋</div>
+                        <div style="font-weight:700; margin-bottom:4px;">Submitting Complaints</div>
+                        <div style="font-size:12px; color:var(--text-secondary);">Step-by-step guide</div>
+                    </a>
+
+                    <a href="#" onclick="alert('Guide coming soon!'); return false;" style="padding:20px; background:var(--bg-dark); border-radius:12px; border:1px solid var(--border-color); text-decoration:none; color:var(--text-primary); transition:all 0.3s ease;" onmouseover="this.style.borderColor='var(--primary-light)'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)'">
+                        <div style="font-size:24px; margin-bottom:8px;">📊</div>
+                        <div style="font-weight:700; margin-bottom:4px;">Understanding Analytics</div>
+                        <div style="font-size:12px; color:var(--text-secondary);">Track your data</div>
+                    </a>
+
+                    <a href="#" onclick="alert('Guide coming soon!'); return false;" style="padding:20px; background:var(--bg-dark); border-radius:12px; border:1px solid var(--border-color); text-decoration:none; color:var(--text-primary); transition:all 0.3s ease;" onmouseover="this.style.borderColor='var(--primary-light)'; this.style.transform='translateY(-4px)'" onmouseout="this.style.borderColor='var(--border-color)'; this.style.transform='translateY(0)'">
+                        <div style="font-size:24px; margin-bottom:8px;">⚙</div>
+                        <div style="font-weight:700; margin-bottom:4px;">Account Settings</div>
+                        <div style="font-size:12px; color:var(--text-secondary);">Manage preferences</div>
+                    </a>
+                </div>
+            </div>
+        </div>
     `;
 }
 
@@ -1534,8 +1845,8 @@ function userLogout() {
 // ===============================
 // AI CHATBOT FUNCTIONS
 // ===============================
-// AI Backend API URL - Update this if your backend runs on a different port or URL
-const AI_API_URL = 'https://smart-public-complaints-backend.onrender.com/api/ai/chat';
+// AI Backend API URL - update if your backend URL changes
+const AI_API_URL = `${API_BASE_URL}/api/ai/chat`;
 let chatHistory = [];
 let isWaitingForResponse = false;
 
@@ -1610,9 +1921,10 @@ async function sendChatMessage() {
     } catch (error) {
         console.error('Chat error:', error);
         hideTypingIndicator();
-        addChatMessage('assistant', 'Sorry, I\'m having trouble connecting to the AI service. Please make sure the backend server is running on port 5001 , or try again later.');
+        addChatMessage('assistant', `Sorry, I'm having trouble connecting to the AI service. Please make sure the backend at ${AI_API_URL} is reachable, or try again later.`);
     }
 }
+
 function addChatMessage(role, content) {
     const messagesContainer = document.getElementById('chatMessages');
     
@@ -1738,43 +2050,63 @@ async function loadChatHistory() {
 
     const messagesContainer = document.getElementById('chatMessages');
     const suggestedQuestions = document.getElementById('suggestedQuestions');
+    const clearBtn = document.getElementById('clearChatBtn');
     
     // Reset chat history
     chatHistory = [];
+
+    const showDefaultState = () => {
+        if (!messagesContainer) return;
+
+        messagesContainer.innerHTML = `
+            <div class="chat-welcome-message">
+                <div class="chat-welcome-icon">🤖</div>
+                <div class="chat-welcome-text">
+                    <h3>Hello! I'm your AI Assistant</h3>
+                    <p>I can help you with:</p>
+                    <ul>
+                        <li>Filing and managing complaints</li>
+                        <li>Understanding the complaint process</li>
+                        <li>Tracking your complaint status</li>
+                        <li>Answering questions about civic issues</li>
+                        <li>Suggesting categories and priorities</li>
+                    </ul>
+                    <p style="margin-top:16px; color:var(--text-secondary); font-size:13px;">Click on a suggested question above or type your message below to get started!</p>
+                </div>
+            </div>
+        `;
+
+        if (suggestedQuestions) suggestedQuestions.style.display = 'block';
+        if (clearBtn) clearBtn.style.display = 'none';
+    };
     
     try {
         const snapshot = await firebaseDB.collection('chatHistory')
             .where('userId', '==', currentUser.uid)
-            .orderBy('timestamp', 'desc')
-            .limit(20)
             .get();
 
         if (snapshot.empty) {
-            // Show suggested questions if no history
-            if (suggestedQuestions) suggestedQuestions.style.display = 'block';
-            const clearBtn = document.getElementById('clearChatBtn');
-            if (clearBtn) clearBtn.style.display = 'none';
+            showDefaultState();
             return;
         }
 
-        // Hide suggested questions if there's history
-        if (suggestedQuestions) suggestedQuestions.style.display = 'none';
-        const clearBtn = document.getElementById('clearChatBtn');
-        if (clearBtn) clearBtn.style.display = 'inline-flex';
-
-        // Clear welcome message and existing messages
-        messagesContainer.innerHTML = '';
-
-        // Load messages in reverse order (oldest first)
         const messages = [];
         snapshot.forEach(doc => {
             messages.push(doc.data());
         });
-        messages.reverse();
 
-        // Temporarily disable adding to chatHistory array
+        messages.sort((a, b) => {
+            const aTime = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
+            const bTime = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
+            return aTime - bTime;
+        });
+
+        if (suggestedQuestions) suggestedQuestions.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'inline-flex';
+
+        messagesContainer.innerHTML = '';
+
         messages.forEach(msg => {
-            // Use internal method to add messages without triggering duplicate history
             const userMsg = { role: 'user', content: msg.userMessage, timestamp: msg.timestamp?.toDate ? msg.timestamp.toDate() : new Date() };
             const aiMsg = { role: 'assistant', content: msg.aiResponse, timestamp: msg.timestamp?.toDate ? msg.timestamp.toDate() : new Date() };
             chatHistory.push(userMsg, aiMsg);
@@ -1782,24 +2114,13 @@ async function loadChatHistory() {
             displayChatMessage('assistant', msg.aiResponse, aiMsg.timestamp);
         });
 
+        if (!chatHistory.length) {
+            showDefaultState();
+        }
+
     } catch (error) {
         console.error('Error loading chat history:', error);
-        // If there's an error with ordering, try without orderBy
-        try {
-            const snapshot = await firebaseDB.collection('chatHistory')
-                .where('userId', '==', currentUser.uid)
-                .limit(20)
-                .get();
-            
-            if (!snapshot.empty) {
-                if (suggestedQuestions) suggestedQuestions.style.display = 'none';
-                const clearBtn = document.getElementById('clearChatBtn');
-                if (clearBtn) clearBtn.style.display = 'inline-flex';
-                messagesContainer.innerHTML = '';
-            }
-        } catch (retryError) {
-            console.error('Error in retry loading chat history:', retryError);
-        }
+        showDefaultState();
     }
 }
 
@@ -1878,4 +2199,275 @@ async function clearChatHistory() {
         console.error('Error clearing chat history:', error);
         showError('Failed to clear chat history');
     }
+}
+
+// ===============================
+// LOCATION WIDGET
+// ===============================
+let _locationCoords = null;
+let _nearbyCache    = {};
+let _activeNearbyType = 'police';
+
+async function initDashboardLocation() {
+    const cityEl     = document.getElementById('locationCity');
+    const coordEl    = document.getElementById('locationCoords');
+    const loadingEl  = document.getElementById('nearbyLoading');
+    const refreshBtn = document.getElementById('locationRefreshBtn');
+    const manualEl   = document.getElementById('locationManualSearch');
+
+    if (!cityEl) return;
+
+    // Always show manual search as an option
+    if (manualEl) manualEl.style.display = 'block';
+
+    if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.textContent = '\u23f3 Locating...'; }
+
+    if (!navigator.geolocation) {
+        cityEl.textContent  = '\ud83d\udccd Enter location below';
+        coordEl.textContent = 'GPS not supported — use manual search';
+        if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '\ud83d\udd04 Refresh'; }
+        return;
+    }
+
+    cityEl.textContent  = 'Detecting location\u2026';
+    coordEl.textContent = 'Requesting GPS access';
+
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            _locationCoords = { lat, lng };
+            _nearbyCache = {};
+
+            if (coordEl) coordEl.textContent = `${lat.toFixed(5)}\u00b0 N, ${lng.toFixed(5)}\u00b0 E \u00b7 GPS Active`;
+
+            // Reverse geocode with Nominatim
+            try {
+                const resp = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+                    { headers: { 'Accept-Language': 'en' } }
+                );
+                const geo  = await resp.json();
+                const addr = geo.address || {};
+                const city = addr.city || addr.town || addr.village || addr.county || addr.state || 'Unknown City';
+                const state = addr.state || '';
+                const fullCity = `${city}${state ? ', ' + state : ''}`;
+                if (cityEl) cityEl.textContent = `\ud83d\udccd ${fullCity}`;
+                // Pre-fill the manual input with detected city
+                const inp = document.getElementById('locationManualInput');
+                if (inp && !inp.value) inp.value = fullCity;
+            } catch (e) {
+                if (cityEl) cityEl.textContent = `\ud83d\udccd ${lat.toFixed(3)}\u00b0 N, ${lng.toFixed(3)}\u00b0 E`;
+            }
+
+            if (loadingEl) loadingEl.style.display = 'flex';
+            await fetchNearbyServices(_activeNearbyType, lat, lng);
+            if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '\ud83d\udd04 Refresh'; }
+        },
+        (err) => {
+            console.warn('Geolocation error:', err.message);
+            if (cityEl) cityEl.textContent = '\ud83d\udccd GPS Unavailable';
+            if (coordEl) coordEl.textContent = 'Enter your city below to find nearby services';
+
+            // Show prompt in all nearby lists
+            ['Police','Municipal','Hospital','Fire'].forEach(t => {
+                const el = document.getElementById('nearby' + t);
+                if (el) {
+                    el.innerHTML = `<div class="nearby-no-data">\u2197\ufe0f Type your city in the search box above and click <strong>Search</strong> to find nearby services.</div>`;
+                    el.style.display = (t === 'Police') ? 'block' : 'none';
+                }
+            });
+            if (loadingEl) loadingEl.style.display = 'none';
+            if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '\ud83d\udd04 Retry GPS'; }
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 120000 }
+    );
+}
+
+async function searchLocationManually() {
+    const inp = document.getElementById('locationManualInput');
+    const btn = document.getElementById('locationSearchBtn');
+    const cityEl  = document.getElementById('locationCity');
+    const coordEl = document.getElementById('locationCoords');
+    const loadingEl = document.getElementById('nearbyLoading');
+
+    const query = (inp?.value || '').trim();
+    if (!query) {
+        inp?.focus();
+        inp?.style && (inp.style.borderColor = '#d62828');
+        setTimeout(() => { if (inp) inp.style.borderColor = ''; }, 2000);
+        return;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = '\u23f3 Searching...'; }
+    if (cityEl) cityEl.textContent = `\ud83d\udccd Searching "${query}"\u2026`;
+    if (coordEl) coordEl.textContent = 'Looking up coordinates\u2026';
+
+    try {
+        const resp = await fetch(
+            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1&countrycodes=in`,
+            { headers: { 'Accept-Language': 'en' } }
+        );
+        const results = await resp.json();
+
+        if (!results.length) {
+            // Try without country restriction
+            const resp2 = await fetch(
+                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`,
+                { headers: { 'Accept-Language': 'en' } }
+            );
+            const r2 = await resp2.json();
+            if (!r2.length) {
+                if (cityEl) cityEl.textContent = `\ud83d\udccd "${query}" not found`;
+                if (coordEl) coordEl.textContent = 'Try a more specific city name';
+                if (btn) { btn.disabled = false; btn.textContent = 'Search'; }
+                return;
+            }
+            results.push(r2[0]);
+        }
+
+        const place = results[0];
+        const lat = parseFloat(place.lat);
+        const lng = parseFloat(place.lon);
+        _locationCoords = { lat, lng };
+        _nearbyCache = {};
+
+        if (cityEl) cityEl.textContent = `\ud83d\udccd ${place.display_name.split(',').slice(0, 2).join(', ')}`;
+        if (coordEl) coordEl.textContent = `${lat.toFixed(5)}\u00b0 N, ${lng.toFixed(5)}\u00b0 E`;
+
+        // Reset all lists so they re-fetch
+        ['Police','Municipal','Hospital','Fire'].forEach(t => {
+            const el = document.getElementById('nearby' + t);
+            if (el) { el.innerHTML = ''; el.style.display = 'none'; }
+        });
+
+        if (loadingEl) loadingEl.style.display = 'flex';
+        await fetchNearbyServices(_activeNearbyType, lat, lng);
+
+    } catch (err) {
+        console.error('Manual search error:', err);
+        if (cityEl) cityEl.textContent = '\ud83d\udccd Search failed. Try again.';
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Search'; }
+    }
+}
+
+function switchNearbyTab(type, btn) {
+    document.querySelectorAll('.nearby-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    _activeNearbyType = type;
+
+    ['Police','Municipal','Hospital','Fire'].forEach(t => {
+        const el = document.getElementById('nearby' + t);
+        if (el) el.style.display = 'none';
+    });
+
+    const capitalType = type.charAt(0).toUpperCase() + type.slice(1);
+    const targetEl = document.getElementById('nearby' + capitalType);
+    if (!targetEl) return;
+
+    if (targetEl.innerHTML.trim()) {
+        targetEl.style.display = 'block';
+        return;
+    }
+
+    if (_locationCoords) {
+        const loadingEl = document.getElementById('nearbyLoading');
+        if (loadingEl) loadingEl.style.display = 'flex';
+        fetchNearbyServices(type, _locationCoords.lat, _locationCoords.lng);
+    } else {
+        targetEl.innerHTML = `<div class="nearby-no-data">\ud83d\udccd Waiting for location data\u2026</div>`;
+        targetEl.style.display = 'block';
+    }
+}
+
+async function fetchNearbyServices(type, lat, lng) {
+    const loadingEl    = document.getElementById('nearbyLoading');
+    const capitalType  = type.charAt(0).toUpperCase() + type.slice(1);
+    const targetEl     = document.getElementById('nearby' + capitalType);
+    if (!targetEl) return;
+
+    if (_nearbyCache[type]) {
+        if (loadingEl) loadingEl.style.display = 'none';
+        targetEl.innerHTML = _nearbyCache[type];
+        targetEl.style.display = 'block';
+        return;
+    }
+
+    const queries = {
+        police:    `[out:json];(node["amenity"="police"](around:5000,${lat},${lng});way["amenity"="police"](around:5000,${lat},${lng}););out center 8;`,
+        municipal: `[out:json];(node["office"~"government|administrative"](around:6000,${lat},${lng});node["amenity"="townhall"](around:6000,${lat},${lng}););out center 8;`,
+        hospital:  `[out:json];(node["amenity"="hospital"](around:5000,${lat},${lng});node["amenity"="clinic"](around:4000,${lat},${lng}););out center 8;`,
+        fire:      `[out:json];(node["amenity"="fire_station"](around:8000,${lat},${lng}););out center 8;`
+    };
+    const icons  = { police:'\ud83d\ude94', municipal:'\ud83c\udfdb\ufe0f', hospital:'\ud83c\udfe5', fire:'\ud83d\ude92' };
+    const labels = { police:'Police Station', municipal:'Municipal Office', hospital:'Hospital / Clinic', fire:'Fire Station' };
+    const mapTerms = { police:'police+station', municipal:'municipal+office', hospital:'hospital', fire:'fire+station' };
+
+    try {
+        const resp = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            body: queries[type]
+        });
+        const data = await resp.json();
+        const elements = (data.elements || []).filter(e => e.tags && e.tags.name);
+
+        if (!elements.length) {
+            const searchUrl = `https://www.google.com/maps/search/${mapTerms[type]}/@${lat},${lng},14z`;
+            const html = `<div class="nearby-no-data">
+                <div style="font-size:32px;margin-bottom:8px;">${icons[type]}</div>
+                <p>No ${labels[type]}s found within 5 km.</p>
+                <a href="${searchUrl}" target="_blank" style="color:var(--primary-light);font-size:12px;font-weight:600;">\ud83d\udd0d Search on Google Maps</a>
+            </div>`;
+            _nearbyCache[type] = html;
+            targetEl.innerHTML = html;
+            if (loadingEl) loadingEl.style.display = 'none';
+            targetEl.style.display = 'block';
+            return;
+        }
+
+        const html = elements.slice(0, 6).map(el => {
+            const name = el.tags.name || labels[type];
+            const eLat = el.center ? el.center.lat : (el.lat || lat);
+            const eLng = el.center ? el.center.lon : (el.lon || lng);
+            const distM   = haversineDistance(lat, lng, eLat, eLng);
+            const distStr = distM < 1000 ? `${Math.round(distM)} m away` : `${(distM/1000).toFixed(1)} km away`;
+            const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${eLat},${eLng}`;
+            return `<a class="nearby-service-item" href="${mapsUrl}" target="_blank">
+                <div class="nearby-service-icon">${icons[type]}</div>
+                <div style="flex:1;min-width:0;">
+                    <div class="nearby-service-name">${_escHtml(name)}</div>
+                    <div class="nearby-service-dist">${distStr}</div>
+                </div>
+                <div class="nearby-service-action">\ud83d\uddfa\ufe0f Navigate</div>
+            </a>`;
+        }).join('');
+
+        _nearbyCache[type] = html;
+        targetEl.innerHTML = html;
+    } catch (err) {
+        console.warn('Overpass fetch error:', err.message);
+        const searchUrl = `https://www.google.com/maps/search/${mapTerms[type]}/@${lat},${lng},14z`;
+        targetEl.innerHTML = `<div class="nearby-no-data">
+            <p>Could not load nearby services.</p>
+            <a href="${searchUrl}" target="_blank" style="color:var(--primary-light);font-weight:600;">\ud83d\udd0d Search on Google Maps</a>
+        </div>`;
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+        targetEl.style.display = 'block';
+    }
+}
+
+function haversineDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function _escHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = String(text || '');
+    return d.innerHTML;
 }

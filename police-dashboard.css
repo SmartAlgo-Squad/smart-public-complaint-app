@@ -1,0 +1,355 @@
+/* =====================================================
+   POLICE DASHBOARD — Dedicated Styling
+   Police blue color scheme: #0057b8, #003580
+   ===================================================== */
+
+:root {
+  --police-primary:      #0057b8;
+  --police-primary-light:#1a73e8;
+  --police-accent:       #ffd700;
+  --police-danger:       #cc0000;
+  --police-success:      #00a854;
+  --police-sidebar-bg:   #00122e;
+  --police-sidebar-border: rgba(0,87,184,0.3);
+}
+
+/* ---- Sidebar Override ---- */
+.police-sidebar {
+  background: linear-gradient(180deg, #00122e 0%, #001a44 60%, #0d1033 100%) !important;
+  border-right: 1px solid var(--police-sidebar-border) !important;
+}
+
+/* Police logo */
+.police-logo {
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.police-logo-icon {
+  background: linear-gradient(135deg, #0057b8, #ffd700) !important;
+  box-shadow: 0 0 20px rgba(0,87,184,0.5) !important;
+}
+
+.police-logo-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #e8f0fe;
+  letter-spacing: 0.5px;
+  display: block;
+}
+
+.police-logo-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.45);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 1px;
+}
+
+/* Officer badge strip */
+.police-officer-strip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0,87,184,0.2);
+  border: 1px solid rgba(0,87,184,0.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 24px;
+}
+
+.officer-avatar {
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #0057b8, #003580);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255,215,0,0.5);
+  box-shadow: 0 0 12px rgba(0,87,184,0.5);
+  flex-shrink: 0;
+}
+
+.officer-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: #e8f0fe;
+  margin-bottom: 3px;
+}
+
+.officer-badge {
+  font-size: 11px;
+  color: var(--police-accent);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Nav items — police theme */
+.police-sidebar .nav-label {
+  color: rgba(255,255,255,0.4);
+}
+
+.police-sidebar .nav-item {
+  color: rgba(255,255,255,0.65);
+}
+
+.police-sidebar .nav-item:hover {
+  background: rgba(0,87,184,0.3);
+  color: #e8f0fe;
+}
+
+.police-sidebar .nav-item.active {
+  background: linear-gradient(135deg, #0057b8, #1a73e8) !important;
+  color: #ffffff !important;
+  border-left: 3px solid var(--police-accent);
+  box-shadow: 0 8px 20px rgba(0,87,184,0.4);
+}
+
+.police-logout-btn {
+  color: rgba(255,100,100,0.8) !important;
+  margin-top: 8px;
+}
+
+.police-logout-btn:hover {
+  background: rgba(214,40,40,0.25) !important;
+  color: #ff6b6b !important;
+}
+
+/* ---- Primary Button — Police Blue ---- */
+.police-btn-primary {
+  background: linear-gradient(135deg, #0057b8, #1a73e8) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.police-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0,87,184,0.5) !important;
+}
+
+/* ---- Stat Cards — Police Theme ---- */
+.police-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.police-stat-card::before {
+  background: linear-gradient(90deg, #0057b8, var(--police-accent), #1a73e8) !important;
+}
+
+.police-stat-card:hover {
+  border-color: #0057b8 !important;
+  box-shadow: 0 20px 50px rgba(0,87,184,0.3) !important;
+}
+
+/* ---- Section title ---- */
+.police-section-title {
+  color: #4da3ff !important;
+}
+
+.police-section-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #4da3ff;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---- Quick Action Buttons ---- */
+.police-quick-action-btn {
+  background: var(--bg-dark);
+  border: 1px solid var(--police-sidebar-border);
+  border-radius: 14px;
+  padding: 18px 12px;
+  cursor: pointer;
+  text-align: center;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.police-quick-action-btn:hover {
+  background: rgba(0,87,184,0.2);
+  border-color: var(--police-primary-light);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 28px rgba(0,87,184,0.25);
+}
+
+.qa-count {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--police-accent);
+  margin-top: 6px;
+}
+
+/* ---- Today Metrics ---- */
+.police-metric-box {
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.police-metric-box:hover {
+  border-color: var(--police-primary-light);
+  background: rgba(0,87,184,0.08);
+}
+
+.police-metric-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.police-metric-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ---- Challan Row ---- */
+.police-challan-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  border-radius: 14px;
+  margin-bottom: 14px;
+  transition: all 0.3s ease;
+}
+
+.police-challan-row:hover {
+  border-color: var(--police-primary-light) !important;
+  box-shadow: 0 10px 28px rgba(0,87,184,0.2);
+  transform: translateX(4px);
+}
+
+.police-challan-id {
+  font-family: monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4da3ff;
+  letter-spacing: 1px;
+}
+
+.police-vehicle-badge {
+  font-size: 11px;
+  background: rgba(0,87,184,0.2);
+  border: 1px solid rgba(0,87,184,0.4);
+  padding: 3px 10px;
+  border-radius: 10px;
+  color: #4da3ff;
+}
+
+.police-vehicle-number {
+  font-family: monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #4da3ff;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+/* Urgent badge */
+.police-urgent-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(204,0,0,0.2);
+  border: 1px solid rgba(204,0,0,0.5);
+  color: #ff5c5c;
+  padding: 3px 8px;
+  border-radius: 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+  letter-spacing: 0.5px;
+}
+
+/* ---- Modal Info Boxes ---- */
+.police-info-box {
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 18px;
+  transition: border-color 0.2s ease;
+}
+
+.police-info-box:hover {
+  border-color: var(--police-primary-light);
+}
+
+.police-info-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.police-info-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ---- Response Templates ---- */
+.police-response-templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.police-template-btn {
+  background: rgba(0,87,184,0.15);
+  border: 1px solid rgba(0,87,184,0.35);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #4da3ff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.police-template-btn:hover {
+  background: rgba(0,87,184,0.35);
+  border-color: var(--police-primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,87,184,0.3);
+}
+
+/* ---- Filters — Police Blue Active ---- */
+.police-filters .filter-btn:hover,
+.police-filters .filter-btn.active {
+  background: linear-gradient(135deg, #0057b8, #1a73e8) !important;
+  border-color: var(--police-accent) !important;
+  box-shadow: 0 8px 20px rgba(0,87,184,0.35) !important;
+}
+
+/* ---- Chart Bar ---- */
+.police-chart-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: 130px;
+  padding: 0 10px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .police-stats-grid { grid-template-columns: 1fr 1fr; }
+  .police-challan-row { flex-direction: column; }
+  .police-response-templates { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 520px) {
+  .police-stats-grid { grid-template-columns: 1fr; }
+  .police-officer-strip { padding: 10px; }
+  .officer-avatar { width: 38px; height: 38px; font-size: 22px; }
+}

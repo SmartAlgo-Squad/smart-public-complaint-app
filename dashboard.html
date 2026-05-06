@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Smart complaint app - Dashboard</title>
+  <title>Smart Complaint app - Dashboard</title>
   <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
+  <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Toggle menu" onclick="toggleSidebar()">☰</button>
   <div class="container">
     <aside class="sidebar">
+      <button class="sidebar-close-btn" aria-label="Close menu" onclick="toggleSidebar()">✕</button>
       <div class="logo">
         <div class="logo-icon">⚡</div>
-        <span>Smart complaint</span>
+        <span>Smart Complaint </span>
       </div>
 
       <nav class="nav-section">
@@ -19,6 +21,8 @@
         <a href="#" class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</a>
         <a href="#" class="nav-item" data-tab="new-complaint" onclick="switchTab('new-complaint')">➕ New Complaint</a>
         <a href="#" class="nav-item" data-tab="my-complaints" onclick="switchTab('my-complaints')">📋 My Complaints</a>
+        <a href="#" class="nav-item" data-tab="challan-complaint" onclick="switchTab('challan-complaint')">🚗 Challan Complaint</a>
+        <a href="#" class="nav-item" data-tab="my-challan-complaints" onclick="switchTab('my-challan-complaints')">🚔 My Challan Reports</a>
       </nav>
 
       <nav class="nav-section">
@@ -39,9 +43,12 @@
         <div class="header">
           <div class="header-title">
             <h1 id="welcomeMessage">Welcome 👋</h1>
-            <p>Smarter Complaints. Faster Resolutions.</p>
+            <p>Track all your civic issues with AI-powered assistance</p>
           </div>
-          <button id="newComplaintBtnTop" class="btn btn-primary" onclick="switchTab('new-complaint')">➕ New Complaint</button>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <button id="newComplaintBtnTop" class="btn btn-primary" onclick="switchTab('new-complaint')">➕ New Complaint</button>
+            <button id="callNowBtn" class="btn btn-call" onclick="openCallScreen()">📞 Call Now</button>
+          </div>
         </div>
 
         <div class="stats-grid">
@@ -67,17 +74,101 @@
           </div>
         </div>
 
-        <!-- Quick Actions removed per user request -->
+        <!-- Location & Nearby Services Widget -->
+        <div class="location-widget" id="locationWidget">
+          <div class="location-widget-header">
+            <div class="location-widget-title">
+              <div class="location-pulse-dot"></div>
+              <span>📍 Your Location</span>
+            </div>
+            <button class="location-refresh-btn" onclick="initDashboardLocation()" id="locationRefreshBtn" title="Refresh Location">🔄 Refresh</button>
+          </div>
+
+          <!-- Location Info Row -->
+          <div class="location-info-row">
+            <div class="location-main-info" id="locationMainInfo">
+              <div class="location-city" id="locationCity">Detecting location…</div>
+              <div class="location-coords" id="locationCoords">Requesting GPS access</div>
+            </div>
+            <div class="location-weather-badge" id="locationWeatherBadge">
+              <span class="location-weather-icon">🌤️</span>
+              <span id="locationWeatherText">--°C</span>
+            </div>
+          </div>
+
+          <!-- Nearby Services Tabs -->
+          <div class="nearby-tabs">
+            <button class="nearby-tab active" onclick="switchNearbyTab('police', this)">🚔 Police Stations</button>
+            <button class="nearby-tab" onclick="switchNearbyTab('municipal', this)">🏛️ Municipal Office</button>
+            <button class="nearby-tab" onclick="switchNearbyTab('fire', this)">🚒 Fire Stations</button>
+          </div>
+
+          <!-- Manual Location Search (fallback when GPS denied) -->
+          <div class="location-manual-search" id="locationManualSearch">
+            <div class="location-manual-label">🔍 Or enter your city / area manually:</div>
+            <div class="location-manual-row">
+              <input type="text" id="locationManualInput" class="location-manual-input"
+                placeholder="e.g. Mumbai, Pune, Delhi..."
+                onkeydown="if(event.key==='Enter') searchLocationManually()">
+              <button class="location-search-btn" onclick="searchLocationManually()" id="locationSearchBtn">
+                Search
+              </button>
+            </div>
+          </div>
+
+          <!-- Nearby Services List -->
+          <div id="nearbyServicesContainer">
+            <div class="nearby-loading" id="nearbyLoading" style="display:none;">
+              <div class="nearby-spinner"></div>
+              <span>Finding nearby services…</span>
+            </div>
+            <div id="nearbyPolice" class="nearby-list" style="display:none;"></div>
+            <div id="nearbyMunicipal" class="nearby-list" style="display:none;"></div>
+            <div id="nearbyFire" class="nearby-list" style="display:none;"></div>
+          </div>
+
+
+          <!-- Quick Emergency Contacts -->
+          <div class="emergency-contacts">
+            <div class="emergency-contact-title">⚡ Emergency Contacts</div>
+            <div class="emergency-contacts-grid">
+              <a href="tel:100" class="emergency-contact-card">
+                <span class="emergency-icon">🚔</span>
+                <span class="emergency-num">100</span>
+                <span class="emergency-label">Police</span>
+              </a>
+              <a href="tel:101" class="emergency-contact-card">
+                <span class="emergency-icon">🔥</span>
+                <span class="emergency-num">101</span>
+                <span class="emergency-label">Fire</span>
+              </a>
+              <a href="tel:108" class="emergency-contact-card">
+                <span class="emergency-icon">🚑</span>
+                <span class="emergency-num">108</span>
+                <span class="emergency-label">Ambulance</span>
+              </a>
+              <a href="tel:112" class="emergency-contact-card">
+                <span class="emergency-icon">🆘</span>
+                <span class="emergency-num">112</span>
+                <span class="emergency-label">Emergency</span>
+              </a>
+            </div>
+          </div>
+        </div>
 
         <div class="complaints-section">
           <div class="section-header">
             <div class="section-title">Recent Complaints</div>
-            <div class="filters">
-              <button class="filter-btn active" data-status="all">All</button>
-              <button class="filter-btn" data-status="open">Open</button>
-              <button class="filter-btn" data-status="in-progress">In Progress</button>
-              <button class="filter-btn" data-status="resolved">Resolved</button>
+            <div class="filters" id="dashboardStatusFilters">
+              <button class="filter-btn active" data-status="all" onclick="setDashboardComplaintFilter('all', this)">All</button>
+              <button class="filter-btn" data-status="pending" onclick="setDashboardComplaintFilter('pending', this)">Pending</button>
+              <button class="filter-btn" data-status="in-progress" onclick="setDashboardComplaintFilter('in-progress', this)">In Progress</button>
+              <button class="filter-btn" data-status="resolved" onclick="setDashboardComplaintFilter('resolved', this)">Resolved</button>
             </div>
+          </div>
+
+          <div id="dashboardFilterSummary" style="margin-bottom:16px;color:var(--text-secondary);font-size:13px;">
+            All complaints · 0 total
           </div>
 
           <div id="recentComplaintsList"></div>
@@ -113,11 +204,13 @@
                 <select id="subCategory" class="form-select">
                   <option value="">Select Problem Type</option>
                 </select>
+                <div class="ai-suggestion" style="margin-top:8px;">Select the specific type of problem you're experiencing</div>
               </div>
               <div id="otherCategoryInput" class="form-group" style="display:none; margin-top:12px;">
                 <label class="form-label">Please specify your issue <span class="required">*</span></label>
                 <input id="otherCategoryText" type="text" class="form-input" placeholder="Enter your custom category/issue">
               </div>
+              <div class="ai-suggestion">🤖 AI Tip: Select closest category - we'll auto-refine based on description</div>
             </div>
             <div class="form-group">
               <label class="form-label">Priority <span class="required">*</span></label>
@@ -135,6 +228,7 @@
             <div class="form-group">
               <label class="form-label">Location of Issue <span class="required">*</span></label>
               <input id="location" type="text" class="form-input" placeholder="Enter street/area..."> 
+              <div class="ai-suggestion">📍 Enter the specific location where the issue occurred</div>
             </div>
             <div class="form-group">
               <label class="form-label">Affected People <span class="required">*</span></label>
@@ -172,6 +266,7 @@
                 🤖 AI Suggestion: <span id="suggestedCategoryText"></span>
                 <button type="button" class="btn-link" onclick="applySuggestedCategory()" style="margin-left:8px; color:var(--primary-light); text-decoration:underline; cursor:pointer;">Apply</button>
               </div>
+              <div class="ai-suggestion">📝 More details = faster resolution</div>
             </div>
           </div>
 
@@ -183,7 +278,9 @@
                 <button type="button" class="btn btn-secondary" onclick="document.getElementById('mediaUpload').click()" style="width:100%;">
                   📸📹 Choose Images/Videos
                 </button>
+                <button type="button" id="clearMediaBtn" class="btn btn-secondary" onclick="clearAllMediaUploads()" style="width:100%; margin-top:8px; display:none;">🗑️ Clear All Uploads</button>
                 <div id="mediaPreview" class="media-preview-grid" style="display:none; margin-top:16px;"></div>
+                <div class="ai-suggestion" style="margin-top:8px;">You can upload multiple images and videos to help describe your issue</div>
               </div>
             </div>
           </div>
@@ -194,7 +291,7 @@
           </div>
         </div>
 
-       
+        <!-- Feature list removed as requested -->
       </div>
 
         <div id="my-complaints" class="tab-content" style="display:none;" data-tab-name="my-complaints">
@@ -218,7 +315,7 @@
             <p>Insights and trends for your complaints</p>
           </div>
         </div>
-        <div id="analyticsContent" class="complaints-section" style="text-align:center; padding:60px 20px;">
+        <div id="analyticsContent" class="complaints-section" style="padding:24px;">
           <p>Loading analytics...</p>
         </div>
       </div>
@@ -338,7 +435,332 @@
           <!-- Content will be loaded here -->
         </div>
       </div>
+      <!-- ========== CHALLAN COMPLAINT TAB ========== -->
+      <div id="challan-complaint" class="tab-content" style="display:none;" data-tab-name="challan-complaint">
+        <div class="header">
+          <div class="header-title">
+            <h1>🚗 Vehicle Challan Complaint</h1>
+            <p>Raise a complaint against an incorrect or unfair traffic challan</p>
+          </div>
+        </div>
+
+        <!-- Info Banner -->
+        <div class="challan-info-banner">
+          <div class="challan-info-icon">🛡️</div>
+          <div>
+            <div style="font-weight:700;color:var(--primary-light);margin-bottom:4px;">How it works</div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Fill in your challan/vehicle details, upload supporting documents, and describe your issue. A unique Complaint ID will be generated. The police department will review and respond within 5–7 working days.</div>
+          </div>
+        </div>
+
+        <div class="form-container">
+          <!-- 1. Challan Details -->
+          <div class="form-title">1. Challan Details</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="challanNumber">Challan Number <span class="required">*</span></label>
+              <input id="challanNumber" type="text" class="form-input" placeholder="e.g. CHN-2024-00123" style="text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="challanDate">Date of Issue</label>
+              <input id="challanDate" type="date" class="form-input">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="challanAuthority">Issuing Authority</label>
+              <input id="challanAuthority" type="text" class="form-input" placeholder="e.g. Traffic Police, RTO">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="challanAmount">Challan Amount (₹)</label>
+              <input id="challanAmount" type="number" class="form-input" placeholder="Amount in INR" min="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="width:100%;">
+              <label class="form-label" for="challanViolation">Violation Mentioned on Challan</label>
+              <input id="challanViolation" type="text" class="form-input" placeholder="e.g. Red Light Jump, Over Speeding">
+            </div>
+          </div>
+
+          <!-- 2. Vehicle Information -->
+          <div class="form-title" style="margin-top:24px;">2. Vehicle Information</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="vehicleRegNumber">Registration Number <span class="required">*</span></label>
+              <input id="vehicleRegNumber" type="text" class="form-input" placeholder="e.g. MH12AB1234" style="text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="vehicleOwner">Owner Name (as per RC)</label>
+              <input id="vehicleOwner" type="text" class="form-input" placeholder="Full Name">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="width:100%;">
+              <label class="form-label" for="vehicleMakeModel">Make & Model</label>
+              <input id="vehicleMakeModel" type="text" class="form-input" placeholder="e.g. Honda City, Bajaj Pulsar">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="width:100%;">
+              <label class="form-label">Vehicle Type <span class="required">*</span></label>
+              <div class="challan-vehicle-type-grid">
+                <label class="challan-vehicle-card">
+                  <input type="radio" name="vehicleType" value="Two-Wheeler" style="display:none;">
+                  <div class="challan-vehicle-card-inner" id="vt-two">
+                    <div class="challan-vehicle-icon">🛵</div>
+                    <div class="challan-vehicle-name">Two-Wheeler</div>
+                    <div class="challan-vehicle-sub">Bike, Scooter, Moped</div>
+                  </div>
+                </label>
+                <label class="challan-vehicle-card">
+                  <input type="radio" name="vehicleType" value="Four-Wheeler" style="display:none;">
+                  <div class="challan-vehicle-card-inner" id="vt-four">
+                    <div class="challan-vehicle-icon">🚗</div>
+                    <div class="challan-vehicle-name">Four-Wheeler</div>
+                    <div class="challan-vehicle-sub">Car, Jeep, SUV</div>
+                  </div>
+                </label>
+                <label class="challan-vehicle-card">
+                  <input type="radio" name="vehicleType" value="Others" style="display:none;">
+                  <div class="challan-vehicle-card-inner" id="vt-other">
+                    <div class="challan-vehicle-icon">🚌</div>
+                    <div class="challan-vehicle-name">Others</div>
+                    <div class="challan-vehicle-sub">Bus, Truck, Auto, etc.</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Reason for Dispute -->
+          <div class="form-title" style="margin-top:24px;">3. Reason for Dispute</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="disputeReason">Dispute Reason <span class="required">*</span></label>
+              <select id="disputeReason" class="form-select">
+                <option value="">Select Reason</option>
+                <option value="Wrong Vehicle Number">Wrong Vehicle Number</option>
+                <option value="Already Paid">Already Paid</option>
+                <option value="Did Not Commit Offence">Did Not Commit Offence</option>
+                <option value="Wrong Location">Wrong Location</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Your Location at the Time of Incident</label>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-secondary" onclick="getChallanLocation()" style="white-space:nowrap;">📍 Fetch</button>
+                <input id="incidentLocation" type="text" class="form-input" placeholder="Manual input or auto-fetch">
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="width:100%;">
+              <label class="form-label" for="challanDescription">Detailed Description of the Dispute <span class="required">*</span></label>
+              <textarea id="challanDescription" class="form-textarea" rows="4" placeholder="Describe the issue clearly..." style="min-height:100px;"></textarea>
+            </div>
+          </div>
+
+          <!-- 4. Supporting Evidence -->
+          <div class="form-title" style="margin-top:24px;">4. Supporting Evidence</div>
+          <div class="form-row">
+            <div class="form-group" style="width:100%;">
+              <label class="form-label">Evidence Type (Select all that apply):</label>
+              <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px;" id="evidenceTypeContainer">
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="RC Book Copy"> RC Book Copy</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Payment Proof"> Payment Proof</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Front Image of Vehicle"> Front Image</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Back Image of Vehicle"> Back Image</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Aadhaar Card"> Aadhaar Card</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Vehicle Type Proof"> Vehicle Type Proof</label>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Front Image of Vehicle <span class="required">*</span></label>
+              <div class="challan-upload-zone" onclick="document.getElementById('challanFrontInput').click()">
+                <input type="file" id="challanFrontInput" accept="image/*" style="display:none;">
+                <div class="challan-upload-placeholder" id="challanFrontPlaceholder">
+                  <div style="font-size:36px;margin-bottom:8px;">📷</div>
+                  <div style="font-weight:600;margin-bottom:4px;">Click to upload front photo</div>
+                  <div style="font-size:12px;color:var(--text-secondary);">JPG, PNG, WEBP • Max 10 MB</div>
+                </div>
+                <div id="challanFrontPreview" style="display:none;"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Back Image of Vehicle <span class="required">*</span></label>
+              <div class="challan-upload-zone" onclick="document.getElementById('challanBackInput').click()">
+                <input type="file" id="challanBackInput" accept="image/*" style="display:none;">
+                <div class="challan-upload-placeholder" id="challanBackPlaceholder">
+                  <div style="font-size:36px;margin-bottom:8px;">📷</div>
+                  <div style="font-weight:600;margin-bottom:4px;">Click to upload back photo</div>
+                  <div style="font-size:12px;color:var(--text-secondary);">JPG, PNG, WEBP • Max 10 MB</div>
+                </div>
+                <div id="challanBackPreview" style="display:none;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">RC / Other Documents <span style="color:var(--text-secondary);font-size:12px;">(Optional)</span></label>
+              <div class="challan-upload-zone challan-doc-zone" onclick="document.getElementById('challanRcInput').click()">
+                <input type="file" id="challanRcInput" accept="image/*,application/pdf" style="display:none;">
+                <div class="challan-upload-placeholder">
+                  <div style="font-size:32px;margin-bottom:8px;">📋</div>
+                  <div style="font-weight:600;margin-bottom:4px;">Upload Document</div>
+                  <div style="font-size:12px;color:var(--text-secondary);">Image or PDF • Max 10 MB</div>
+                </div>
+                <div id="challanRcPreview" style="display:none;"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Aadhaar Card <span style="color:var(--text-secondary);font-size:12px;">(Optional)</span></label>
+              <div class="challan-upload-zone challan-doc-zone" onclick="document.getElementById('challanAadhaarInput').click()">
+                <input type="file" id="challanAadhaarInput" accept="image/*,application/pdf" style="display:none;">
+                <div class="challan-upload-placeholder">
+                  <div style="font-size:32px;margin-bottom:8px;">🪪</div>
+                  <div style="font-weight:600;margin-bottom:4px;">Upload Aadhaar</div>
+                  <div style="font-size:12px;color:var(--text-secondary);">Image or PDF • Max 10 MB</div>
+                </div>
+                <div id="challanAadhaarPreview" style="display:none;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. User Details -->
+          <div class="form-title" style="margin-top:24px;">5. User Details</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="challanFullName">Full Name <span class="required">*</span></label>
+              <input id="challanFullName" type="text" class="form-input" placeholder="Enter full name">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="challanEmail">Email Address</label>
+              <input id="challanEmail" type="email" class="form-input" placeholder="Enter email">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="challanContact">Contact Number <span class="required">*</span></label>
+              <input id="challanContact" type="tel" class="form-input" placeholder="Enter contact number">
+            </div>
+          </div>
+
+          <!-- 6. Priority -->
+          <div class="form-title" style="margin-top:24px;">6. Priority</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="challanPriority">Priority Level</label>
+              <select id="challanPriority" class="form-select">
+                <option value="Low">Low</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div class="form-row" style="gap:12px; margin-top:24px;">
+            <button id="challanSubmitBtn" class="btn btn-primary" onclick="handleChallanSubmit()" style="flex:1;">✅ Submit Challan Complaint</button>
+            <button class="btn btn-secondary" onclick="resetChallanForm()">🔄 Reset Form</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== MY CHALLAN COMPLAINTS TAB ========== -->
+      <div id="my-challan-complaints" class="tab-content" style="display:none;" data-tab-name="my-challan-complaints">
+        <div class="header">
+          <div class="header-title">
+            <h1>🚔 My Challan Reports</h1>
+            <p>Track all your submitted challan complaints and police responses</p>
+          </div>
+          <button class="btn btn-primary" onclick="switchTab('challan-complaint', document.querySelector('[data-tab=challan-complaint]'))">➕ New Challan Complaint</button>
+        </div>
+        <div class="complaints-section">
+          <div id="myChallanList" style="min-height:120px;">
+            <p style="text-align:center;color:var(--text-secondary);padding:40px 20px;">Loading your challan complaints…</p>
+          </div>
+        </div>
+      </div>
+
     </main>
+  </div>
+
+  <!-- ========== AI CALL SCREEN OVERLAY ========== -->
+  <div id="aiCallOverlay" class="call-overlay" style="display:none;">
+    <!-- Animated background -->
+    <div class="call-bg-rings">
+      <div class="call-ring call-ring-1"></div>
+      <div class="call-ring call-ring-2"></div>
+      <div class="call-ring call-ring-3"></div>
+    </div>
+
+    <!-- NAME CAPTURE MODAL -->
+    <div id="callNameModal" class="call-modal" style="display:none;">
+      <div class="call-modal-content">
+        <h2 style="margin-bottom:20px;">Welcome to Smart Public Complaint System</h2>
+        <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px;">Please enter your name to start the call. You'll be asked to choose a language during the call.</p>
+        <div style="margin-bottom:24px;">
+          <label style="display:block; font-size:14px; margin-bottom:8px; color:var(--text-secondary);">Your Full Name</label>
+          <input type="text" id="callUserName" class="call-modal-input" placeholder="Enter your full name" style="font-size:14px;">
+        </div>
+        <button class="call-modal-btn" onclick="callStartConversation()">📞 Start Call</button>
+      </div>
+    </div>
+
+    <!-- VOICE SELECTION MODAL -->
+    <div id="callVoiceModal" class="call-modal" style="display:none;">
+      <div class="call-modal-content">
+        <h2 style="margin-bottom:20px;">Select Assistant Voice</h2>
+        <div id="callVoiceOptions" style="display:flex; flex-direction:column; gap:12px; margin-bottom:24px;"></div>
+        <button class="call-modal-btn" onclick="callStartAfterVoice()">✓ Confirm Voice</button>
+      </div>
+    </div>
+
+    <!-- AI Avatar -->
+    <div class="call-avatar-wrapper" id="callMainContent" style="display:none;">
+      <div class="call-avatar" id="callAvatar">
+        <div class="call-avatar-inner">🤖</div>
+        <div class="call-avatar-pulse"></div>
+      </div>
+      <div class="call-caller-name">AI Complaint Assistant</div>
+      <div class="call-caller-sub" id="callStatusLabel">Connecting…</div>
+    </div>
+
+    <!-- Voice Waveform Visualizer -->
+    <div class="call-waveform" id="callWaveform" style="display:none;">
+      <span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <!-- Transcript Panel -->
+    <div class="call-transcript-panel" id="callTranscriptPanel" style="display:none;">
+      <div class="call-transcript-inner" id="callTranscript"></div>
+    </div>
+
+    <!-- Mic Status -->
+    <div class="call-mic-status" id="callMicStatus" style="display:none;">
+      <span id="callMicIcon">🎤</span>
+      <span id="callMicLabel">Tap mic to speak</span>
+    </div>
+
+    <!-- Call Controls -->
+    <div class="call-controls" id="callCtrlPanel" style="display:none;">
+      <button class="call-ctrl-btn call-ctrl-mute" id="callMuteBtn" onclick="toggleCallMic()" title="Toggle Microphone">
+        <span id="callMuteBtnIcon">🎙️</span>
+        <span class="call-ctrl-label">Speak</span>
+      </button>
+      <button class="call-ctrl-btn call-ctrl-end" onclick="endCall()" title="End Call">
+        <span>📵</span>
+        <span class="call-ctrl-label">End Call</span>
+      </button>
+    </div>
+
+    <!-- Duration -->
+    <div class="call-duration" id="callDuration" style="display:none;">00:00</div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -347,5 +769,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
   <script src="firebase-init.js"></script>
   <script src="dashboard.js"></script>
+  <script src="challan.js"></script>
+  <script src="call.js"></script>
 </body>
 </html>

@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ── Helper ───────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ── Regular complaint media ───────────────────────────
+    match /complaints/{userId}/{allPaths=**} {
+      allow read:  if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId
+                   && request.resource.size < 50 * 1024 * 1024; // 50 MB max
+    }
+
+    // ── Challan complaint documents & images ─────────────
+    match /challanComplaints/{userId}/{complaintId}/{allPaths=**} {
+      // Any signed-in user can upload to their own folder
+      allow write: if isSignedIn()
+                   && request.auth.uid == userId
+                   && request.resource.size < 10 * 1024 * 1024; // 10 MB max
+      // Only the owner or admins can read (admins verified via Firestore lookup not possible here,
+      // so we allow any signed-in user to read — tighten as needed)
+      allow read: if isSignedIn();
+    }
+  }
+}

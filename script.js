@@ -70,7 +70,8 @@ function handleLogin() {
 
             // ✅ ROLE-BASED CHECK (FIXED)
             const role = userData.role || 'user';
-            const isAdmin = role === 'admin';
+            const isAdmin  = role === 'admin';
+            const isPolice = role === 'police';
 
             // Store session
             localStorage.setItem(
@@ -80,6 +81,7 @@ function handleLogin() {
                     email: user.email,
                     role: role,
                     isAdmin: isAdmin,
+                    isPolice: isPolice,
                     loggedIn: true,
                 })
             );
@@ -89,6 +91,8 @@ function handleLogin() {
             setTimeout(() => {
                 if (isAdmin) {
                     window.location.href = 'admin-dashboard.html';
+                } else if (isPolice) {
+                    window.location.href = 'police-dashboard.html';
                 } else {
                     window.location.href = 'dashboard.html';
                 }
@@ -245,7 +249,8 @@ function handleGoogleLogin() {
             const updatedDoc = await firebaseDB.collection('users').doc(user.uid).get();
             const userData = updatedDoc.data();
             const role = userData.role || 'user';
-            const isAdmin = role === 'admin';
+            const isAdmin  = role === 'admin';
+            const isPolice = role === 'police';
 
             // Store session
             localStorage.setItem(
@@ -255,6 +260,7 @@ function handleGoogleLogin() {
                     email: user.email,
                     role: role,
                     isAdmin: isAdmin,
+                    isPolice: isPolice,
                     loggedIn: true,
                 })
             );
@@ -264,6 +270,8 @@ function handleGoogleLogin() {
             setTimeout(() => {
                 if (isAdmin) {
                     window.location.href = 'admin-dashboard.html';
+                } else if (isPolice) {
+                    window.location.href = 'police-dashboard.html';
                 } else {
                     window.location.href = 'dashboard.html';
                 }

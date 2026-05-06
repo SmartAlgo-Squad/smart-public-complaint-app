@@ -398,4 +398,19 @@ body {
     .form-row {
         grid-template-columns: 1fr;
     }
+
+    /* Compact auth header and controls for small phones */
+    .auth-header h1 { font-size: 20px; }
+    .auth-header p { font-size: 12px; }
+    .auth-logo { width: 48px; height:48px; font-size:24px; margin-bottom:12px; }
+    .auth-tab { padding: 8px; font-size:13px; }
+    .btn { padding:10px; font-size:13px; }
+}
+
+@media (max-width: 420px) {
+    .auth-box { padding: 20px; border-radius:14px; }
+    .auth-header { margin-bottom:18px; }
+    .auth-header h1 { font-size:18px; }
+    .auth-header p { font-size:11px; }
+    .auth-tab { font-size:12px; padding:8px 6px; }
 }

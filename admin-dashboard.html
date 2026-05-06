@@ -10,13 +10,15 @@
 </head>
 <body>
 
+<button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Toggle menu" onclick="toggleSidebar()">☰</button>
 <div class="container">
 
     <!-- ================= SIDEBAR ================= -->
     <aside class="sidebar">
+        <button class="sidebar-close-btn" aria-label="Close menu" onclick="toggleSidebar()">✕</button>
         <div class="logo">
             <div class="logo-icon">⚡</div>
-            <span>Smart complaint</span>
+            <span>Smart complaint Admin</span>
         </div>
 
         <nav class="nav-section">
@@ -65,7 +67,7 @@
 
             <div class="header">
                 <div class="header-title">
-                    <h1>Hello Admin</h1>
+                    <h1>Admin Overview 👋</h1>
                     <p>Real-time system health and complaint statistics.</p>
                 </div>
             </div>
@@ -81,10 +83,10 @@
                 <div class="complaints-section">
                     <div class="section-title">⚡ Quick Actions</div>
                     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-top:20px;">
-                        <button class="btn btn-primary" onclick="switchAdminTab('all-complaints', document.querySelector('[data-tab=\"all-complaints\"]'))" style="padding:16px; font-size:14px;">
+                        <button class="btn btn-primary" onclick="switchAdminTab('all-complaints', document.querySelector('[data-tab=\'all-complaints\']'))" style="padding:16px; font-size:14px;">
                             📋 View All
                         </button>
-                        <button id="quickReportsBtn" class="btn btn-secondary" onclick="(function(){switchAdminTab('reports', document.querySelector('[data-tab=\"reports\"]')); loadReports();})()" style="padding:16px; font-size:14px;">
+                        <button class="btn btn-secondary" onclick="switchAdminTab('reports', document.querySelector('[data-tab=\'reports\']'))" style="padding:16px; font-size:14px;">
                             📈 Reports
                         </button>
                         <button class="btn btn-secondary" onclick="exportAllComplaints()" style="padding:16px; font-size:14px;">
@@ -179,6 +181,7 @@
             <div class="header">
                 <div class="header-title">
                     <h1>📈 Reports & Analytics</h1>
+                    <p>Comprehensive insights and statistics for complaint management</p>
                 </div>
                 <button class="btn btn-primary" onclick="exportReport()">📥 Export Report</button>
             </div>

@@ -1,4 +1,4 @@
-// admin.js - FINAL WORKING ADMIN DASHBOARD LOGIC
+﻿// admin.js - FINAL WORKING ADMIN DASHBOARD LOGIC
 
 // ================= GLOBAL STATE =================
 let currentAdminUser = null;
@@ -11,15 +11,34 @@ const COMPLAINT_STATUSES = [
 ];
 
 // ================= HELPERS =================
-function showError(msg) {
-    console.error(msg);
-    alert("Error: " + msg);
+function _adminShowToast(msg, type) {
+    const existing = document.getElementById('adminToastMsg');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'adminToastMsg';
+    toast.style.cssText = `
+        position:fixed; bottom:24px; right:24px; z-index:99999;
+        background:${type === 'error'
+            ? 'linear-gradient(135deg,#d62828,#990000)'
+            : 'linear-gradient(135deg,var(--primary),var(--primary-dark))'};
+        color:#fff; padding:14px 22px; border-radius:12px; font-weight:600;
+        font-size:14px; max-width:420px; box-shadow:0 8px 32px rgba(0,0,0,.5);
+        border-left:4px solid ${type === 'error' ? '#ff5c5c' : 'var(--accent)'};
+        animation:toastSlide .35s cubic-bezier(0.34,1.56,0.64,1);
+        display:flex; align-items:center; gap:10px;`;
+    toast.innerHTML = `<span style="font-size:20px">${type === 'error' ? '⚠️' : '✅'}</span><span>${msg}</span>`;
+    document.body.appendChild(toast);
+    if (!document.getElementById('adminToastKeyframe')) {
+        const s = document.createElement('style'); s.id = 'adminToastKeyframe';
+        s.textContent = '@keyframes toastSlide{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}';
+        document.head.appendChild(s);
+    }
+    setTimeout(() => { if (toast.parentNode) toast.remove(); }, type === 'error' ? 5000 : 3000);
 }
 
-function showSuccess(msg) {
-    console.log(msg);
-    alert(msg);
-}
+function showError(msg)   { console.error(msg); _adminShowToast(msg, 'error');   }
+function showSuccess(msg) { console.log(msg);   _adminShowToast(msg, 'success'); }
 
 function timeAgo(date) {
     const diff = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -43,6 +62,12 @@ function switchAdminTab(tabName, navItem) {
     if (navItem) navItem.classList.add('active');
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Tab-specific loaders
+    if (tabName === 'challan-complaints') {
+        window.location.href = 'police-dashboard.html';
+        return;
+    }
 }
 
 function filterAdminComplaints(status, btn) {
@@ -84,8 +109,11 @@ function loadAdminStats() {
         };
 
         snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.complaintType === 'challan') return; // Ignore challans in general admin
+
             stats.total++;
-            const s = (doc.data().status || 'pending').toLowerCase();
+            const s = (data.status || 'pending').toLowerCase();
             if (s === 'resolved') stats.resolved++;
             else if (s === 'in-progress') stats.inProgress++;
             else if (s === 'rejected') stats.rejected++;
@@ -138,6 +166,8 @@ function loadActivityLog() {
             const activities = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
+                if (data.complaintType === 'challan') return; // Ignore challans
+                
                 const ts = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
                 activities.push({
                     type: 'complaint_created',
@@ -295,9 +325,6 @@ function openComplaintModal(id, data) {
         padding: 20px;
         backdrop-filter: blur(4px);
     `;
-
-    // Prevent background page scrolling while modal is open
-    document.body.style.overflow = 'hidden';
     modal.onclick = (e) => {
         if (e.target === modal) closeComplaintModal();
     };
@@ -338,9 +365,9 @@ function openComplaintModal(id, data) {
     }
 
     modal.innerHTML = `
-        <div style="background:linear-gradient(135deg, var(--bg-card), rgba(0,0,0,0.02)); border:1px solid var(--border-color); border-radius:20px; max-width:900px; width:100%; max-height:90vh; padding:0; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-            <!-- Header (non-scrolling, opaque to avoid overlap) -->
-            <div style="background:var(--bg-card); border-bottom:1px solid var(--border-color); padding:24px 32px; border-radius:20px 20px 0 0; position:relative; top:0; z-index:20;">
+        <div style="background:linear-gradient(135deg, var(--bg-card), rgba(0,212,255,0.05)); border:1px solid var(--border-color); border-radius:20px; max-width:900px; width:100%; max-height:90vh; overflow-y:auto; padding:0; position:relative; box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg, rgba(0,212,255,0.1), rgba(131,56,236,0.1)); border-bottom:1px solid var(--border-color); padding:24px 32px; border-radius:20px 20px 0 0; position:sticky; top:0; z-index:10;">
                 <button onclick="closeComplaintModal()" style="position:absolute; top:20px; right:20px; background:rgba(0,0,0,0.3); border:1px solid var(--border-color); color:var(--text-primary); font-size:20px; cursor:pointer; width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:50%; transition:all 0.3s ease;" onmouseover="this.style.background='rgba(214,40,40,0.3)'; this.style.borderColor='#d62828'" onmouseout="this.style.background='rgba(0,0,0,0.3)'; this.style.borderColor='var(--border-color)'">×</button>
                 
                 <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px; flex-wrap:wrap;">
@@ -348,18 +375,18 @@ function openComplaintModal(id, data) {
                     <div style="flex:1;">
                         <h2 style="font-size:26px; margin-bottom:4px; color:var(--primary-light); font-weight:700;">${escapeHtml(data.title || 'Untitled Complaint')}</h2>
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                            <span style="background:rgba(0,212,255,.06); color:var(--primary-light); padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(0,212,255,0.06);">${escapeHtml(data.category || 'General')}</span>
-                            ${data.subCategory ? `<span style="background:rgba(131,56,236,.06); color:#8338ec; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(131,56,236,0.06);">${escapeHtml(data.subCategory)}</span>` : ''}
-                            <span style="background:rgba(131,56,236,.06); color:#8338ec; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(131,56,236,0.06);">#${id.slice(0,6).toUpperCase()}</span>
-                            <span style="background:${statusColor}10; color:${statusColor}; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; border:1px solid ${statusColor}20; text-transform:uppercase;">${status.replace('-', ' ')}</span>
-                            <span style="background:${priorityColor}10; color:${priorityColor}; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid ${priorityColor}20;">${priority} Priority</span>
+                            <span style="background:rgba(0,212,255,.2); color:var(--primary-light); padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(0,212,255,0.3);">${escapeHtml(data.category || 'General')}</span>
+                            ${data.subCategory ? `<span style="background:rgba(131,56,236,.2); color:#8338ec; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(131,56,236,0.3);">${escapeHtml(data.subCategory)}</span>` : ''}
+                            <span style="background:rgba(131,56,236,.2); color:#8338ec; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(131,56,236,0.3);">#${id.slice(0,6).toUpperCase()}</span>
+                            <span style="background:${statusColor}20; color:${statusColor}; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; border:1px solid ${statusColor}40; text-transform:uppercase;">${status.replace('-', ' ')}</span>
+                            <span style="background:${priorityColor}20; color:${priorityColor}; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid ${priorityColor}40;">${priority} Priority</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Scrollable Content -->
-            <div style="padding:32px; max-height: calc(90vh - 160px); overflow-y:auto; -webkit-overflow-scrolling:touch;">
+            <!-- Content -->
+            <div style="padding:32px;">
                 <!-- Description -->
                 <div style="margin-bottom:28px;">
                     <h3 style="font-size:16px; color:var(--primary-light); margin-bottom:12px; font-weight:700; display:flex; align-items:center; gap:8px;">
@@ -430,12 +457,6 @@ function openComplaintModal(id, data) {
     `;
 
     document.body.appendChild(modal);
-
-    // Allow closing modal with Escape key
-    modal._escHandler = function (e) {
-        if (e.key === 'Escape') closeComplaintModal();
-    };
-    document.addEventListener('keydown', modal._escHandler);
 }
 
 function escapeHtml(text) {
@@ -446,13 +467,7 @@ function escapeHtml(text) {
 
 function closeComplaintModal() {
     const modal = document.getElementById('complaintModal');
-    if (modal) {
-        // Remove Escape key handler if attached
-        if (modal._escHandler) document.removeEventListener('keydown', modal._escHandler);
-        modal.remove();
-    }
-    // Restore background page scrolling
-    document.body.style.overflow = '';
+    if (modal) modal.remove();
 }
 
 function assignComplaint(id) {
@@ -538,10 +553,13 @@ function loadAllComplaints() {
             }
 
             snapshot.forEach(doc => {
-                const complaintData = { id: doc.id, ...doc.data() };
+                const data = doc.data();
+                if (data.complaintType === 'challan') return; // Ignore challans
+                
+                const complaintData = { id: doc.id, ...data };
                 allComplaintsData.push(complaintData);
                 list.appendChild(
-                    createAdminComplaintElement(doc.id, doc.data())
+                    createAdminComplaintElement(doc.id, data)
                 );
             });
         });
@@ -650,7 +668,12 @@ function loadPerformanceMetrics() {
 
     firebaseDB.collection('complaints').get().then(snapshot => {
         const complaints = [];
-        snapshot.forEach(doc => complaints.push(doc.data()));
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.complaintType !== 'challan') {
+                complaints.push(data);
+            }
+        });
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -769,7 +792,12 @@ function loadReports() {
 
     firebaseDB.collection('complaints').get().then(snapshot => {
         const complaints = [];
-        snapshot.forEach(doc => complaints.push({ id: doc.id, ...doc.data() }));
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.complaintType !== 'challan') {
+                complaints.push({ id: doc.id, ...data });
+            }
+        });
 
         const stats = calculateReportStats(complaints);
         displayReports(stats, complaints, content);
@@ -829,91 +857,130 @@ function calculateReportStats(complaints) {
 }
 
 function displayReports(stats, complaints, container) {
-    const resolutionRate = stats.total > 0 
-        ? Math.round((stats.byStatus.resolved / stats.total) * 100) 
-        : 0;
-    const pendingRate = stats.total > 0 
-        ? Math.round((stats.byStatus.pending / stats.total) * 100) 
-        : 0;
-    const inProgressRate = stats.total > 0 
-        ? Math.round((stats.byStatus['in-progress'] / stats.total) * 100) 
-        : 0;
+    const resolutionRate = stats.total > 0 ? Math.round((stats.byStatus.resolved / stats.total) * 100) : 0;
+    const rejectedRate   = stats.total > 0 ? Math.round((stats.byStatus.rejected  / stats.total) * 100) : 0;
+    const progressRate   = stats.total > 0 ? Math.round((stats.byStatus['in-progress'] / stats.total) * 100) : 0;
+    const pendingRate    = stats.total > 0 ? Math.round((stats.byStatus.pending    / stats.total) * 100) : 0;
 
     container.style.padding = '28px';
-    container.style.textAlign = 'left';
+
+    // Category bars
+    const catColors = ['#00d4ff','#8338ec','#ff006e','#fb5607','#3a86ff'];
+    const catMax = stats.topCategories.length ? stats.topCategories[0].count : 1;
+    const catBarsHTML = stats.topCategories.map((item, i) => {
+        const pct = Math.round((item.count / catMax) * 100);
+        return `<div class="report-status-row">
+            <div class="report-status-dot" style="background:${catColors[i%catColors.length]};"></div>
+            <div class="report-status-label">${item.category}</div>
+            <div class="report-status-bar-wrap"><div class="report-status-bar" style="width:${pct}%;background:${catColors[i%catColors.length]};"></div></div>
+            <div class="report-status-count" style="color:${catColors[i%catColors.length]};">${item.count}</div>
+        </div>`;
+    }).join('');
+
+    // Status bars
+    const statusCfg = [
+        { key:'pending',     label:'Pending',     color:'#00d4ff', count: stats.byStatus.pending },
+        { key:'in-progress', label:'In Progress', color:'#fb5607', count: stats.byStatus['in-progress'] },
+        { key:'resolved',    label:'Resolved',    color:'#51cf66', count: stats.byStatus.resolved },
+        { key:'rejected',    label:'Rejected',    color:'#d62828', count: stats.byStatus.rejected },
+    ];
+    const statusBarsHTML = statusCfg.map(s => {
+        const pct = stats.total > 0 ? Math.round((s.count/stats.total)*100) : 0;
+        return `<div class="report-status-row">
+            <div class="report-status-dot" style="background:${s.color};"></div>
+            <div class="report-status-label">${s.label}</div>
+            <div class="report-status-bar-wrap"><div class="report-status-bar" style="width:${pct}%;background:${s.color};"></div></div>
+            <div class="report-status-count" style="color:${s.color};">${s.count} <small style="color:var(--text-secondary);font-weight:400;">(${pct}%)</small></div>
+        </div>`;
+    }).join('');
+
+    // Monthly bars
+    const monthEntries = Object.entries(stats.byMonth).sort().slice(-6);
+    const monthMax = monthEntries.length ? Math.max(...monthEntries.map(e=>e[1]),1) : 1;
+    const monthGrads = ['linear-gradient(180deg,#00d4ff,#3a86ff)','linear-gradient(180deg,#8338ec,#00d4ff)','linear-gradient(180deg,#ff006e,#8338ec)','linear-gradient(180deg,#fb5607,#ff006e)','linear-gradient(180deg,#3a86ff,#51cf66)','linear-gradient(180deg,#51cf66,#3a86ff)'];
+    const monthBarsHTML = monthEntries.map(([mk,cnt],i) => {
+        const hPct = Math.round((cnt/monthMax)*100);
+        const label = new Date(mk+'-01').toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;">
+            <span style="font-size:12px;font-weight:700;color:var(--text-primary);">${cnt}</span>
+            <div style="width:100%;background:${monthGrads[i%monthGrads.length]};height:${hPct}%;border-radius:6px 6px 0 0;box-shadow:0 4px 12px rgba(0,212,255,0.25);min-height:4px;"></div>
+            <span style="font-size:10px;color:var(--text-secondary);text-align:center;">${label}</span>
+        </div>`;
+    }).join('');
+
+    // Locations
+    const locHTML = renderTopLocations(stats.topLocations);
 
     container.innerHTML = `
-        <div class="stats-grid" style="margin-bottom:32px;">
-            <div class="stat-card" style="background:linear-gradient(135deg, rgba(0,212,255,0.12), rgba(131,56,236,0.08));">
-                <div class="stat-label">📊 Total Complaints</div>
-                <div class="stat-value" style="color:var(--primary-light);">${stats.total}</div>
-                <div class="stat-change">All time complaints</div>
+        <!-- KPI Cards -->
+        <div class="report-kpi-grid">
+            <div class="report-kpi-card kpi-total">
+                <div class="report-kpi-icon">📊</div>
+                <div class="report-kpi-value" style="color:var(--primary-light);">${stats.total}</div>
+                <div class="report-kpi-label">Total Complaints</div>
+                <div class="report-kpi-sub">All categories</div>
             </div>
-            <div class="stat-card" style="background:linear-gradient(135deg, rgba(58,134,255,0.12), rgba(81,207,102,0.08));">
-                <div class="stat-label">✅ Resolution Rate</div>
-                <div class="stat-value" style="color:#3a86ff;">${resolutionRate}%</div>
-                <div class="stat-change">${stats.byStatus.resolved} resolved</div>
+            <div class="report-kpi-card kpi-resolved">
+                <div class="report-kpi-icon">✅</div>
+                <div class="report-kpi-value" style="color:#51cf66;">${resolutionRate}%</div>
+                <div class="report-kpi-label">Resolution Rate</div>
+                <div class="report-kpi-sub">${stats.byStatus.resolved} resolved</div>
             </div>
-            <div class="stat-card" style="background:linear-gradient(135deg, rgba(251,86,7,0.12), rgba(255,217,61,0.08));">
-                <div class="stat-label">⏱️ Avg Resolution Time</div>
-                <div class="stat-value" style="color:#fb5607;">${stats.avgResolutionTime}d</div>
-                <div class="stat-change">${stats.resolutionTime.length} resolved cases</div>
+            <div class="report-kpi-card kpi-pending">
+                <div class="report-kpi-icon">⏳</div>
+                <div class="report-kpi-value" style="color:#ffd60a;">${stats.byStatus.pending}</div>
+                <div class="report-kpi-label">Pending</div>
+                <div class="report-kpi-sub">${pendingRate}% of total</div>
             </div>
-            <div class="stat-card" style="background:linear-gradient(135deg, rgba(0,212,255,0.12), rgba(0,212,255,0.08));">
-                <div class="stat-label">⏳ Pending</div>
-                <div class="stat-value" style="color:var(--primary-light);">${stats.byStatus.pending}</div>
-                <div class="stat-change">${pendingRate}% of total</div>
+            <div class="report-kpi-card kpi-progress">
+                <div class="report-kpi-icon">🛠️</div>
+                <div class="report-kpi-value" style="color:#fb5607;">${stats.byStatus['in-progress']}</div>
+                <div class="report-kpi-label">In Progress</div>
+                <div class="report-kpi-sub">${progressRate}% of total</div>
             </div>
-            <div class="stat-card" style="background:linear-gradient(135deg, rgba(251,86,7,0.12), rgba(251,86,7,0.08));">
-                <div class="stat-label">🛠 In Progress</div>
-                <div class="stat-value" style="color:#fb5607;">${stats.byStatus['in-progress']}</div>
-                <div class="stat-change">${inProgressRate}% of total</div>
+            <div class="report-kpi-card kpi-rejected">
+                <div class="report-kpi-icon">🚫</div>
+                <div class="report-kpi-value" style="color:#d62828;">${stats.byStatus.rejected}</div>
+                <div class="report-kpi-label">Rejected</div>
+                <div class="report-kpi-sub">${rejectedRate}% of total</div>
             </div>
-            <div class="stat-card" style="background:linear-gradient(135deg, rgba(214,40,40,0.12), rgba(214,40,40,0.08));">
-                <div class="stat-label">🚫 Rejected</div>
-                <div class="stat-value" style="color:#d62828;">${stats.byStatus.rejected}</div>
-                <div class="stat-change">${stats.total > 0 ? Math.round((stats.byStatus.rejected / stats.total) * 100) : 0}% of total</div>
-            </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(450px, 1fr)); gap:24px; margin-bottom:24px;">
-            <div class="chart-container" style="background:linear-gradient(135deg, rgba(0,212,255,0.05), rgba(131,56,236,0.03)); border:2px solid var(--border-color);">
-                <div class="chart-title" style="font-size:18px; margin-bottom:20px;">📊 Complaints by Status</div>
-                <div id="statusChart" style="min-height:300px; padding:20px 0;">
-                    ${renderStatusChart(stats.byStatus)}
-                </div>
-            </div>
-
-            <div class="chart-container" style="background:linear-gradient(135deg, rgba(0,212,255,0.05), rgba(131,56,236,0.03)); border:2px solid var(--border-color);">
-                <div class="chart-title" style="font-size:18px; margin-bottom:20px;">📂 Top Categories</div>
-                <div id="categoryChart" style="min-height:300px; padding:20px 0;">
-                    ${renderCategoryChart(stats.topCategories)}
-                </div>
-            </div>
-
-            <div class="chart-container" style="background:linear-gradient(135deg, rgba(0,212,255,0.05), rgba(131,56,236,0.03)); border:2px solid var(--border-color);">
-                <div class="chart-title" style="font-size:18px; margin-bottom:20px;">⚡ Complaints by Priority</div>
-                <div id="priorityChart" style="min-height:300px; padding:20px 0;">
-                    ${renderPriorityChart(stats.byPriority)}
-                </div>
-            </div>
-
-            <div class="chart-container" style="background:linear-gradient(135deg, rgba(0,212,255,0.05), rgba(131,56,236,0.03)); border:2px solid var(--border-color);">
-                <div class="chart-title" style="font-size:18px; margin-bottom:20px;">📅 Monthly Trend</div>
-                <div id="monthlyChart" style="min-height:300px; padding:20px 0;">
-                    ${renderMonthlyChart(stats.byMonth)}
-                </div>
+            <div class="report-kpi-card kpi-time">
+                <div class="report-kpi-icon">⏱️</div>
+                <div class="report-kpi-value" style="color:#8338ec;">${stats.avgResolutionTime}d</div>
+                <div class="report-kpi-label">Avg Resolution</div>
+                <div class="report-kpi-sub">${stats.resolutionTime.length} resolved cases</div>
             </div>
         </div>
 
-        <div class="chart-container" style="margin-top:24px; background:linear-gradient(135deg, rgba(0,212,255,0.05), rgba(131,56,236,0.03)); border:2px solid var(--border-color);">
-            <div class="chart-title" style="font-size:18px; margin-bottom:20px;">📍 Top Locations</div>
-            <div style="margin-top:16px;">
-                ${renderTopLocations(stats.topLocations)}
+        <!-- Charts Grid -->
+        <div class="report-chart-grid">
+            <div class="report-chart-panel">
+                <div class="report-chart-panel-title">📊 Status Distribution</div>
+                ${statusBarsHTML}
             </div>
+            <div class="report-chart-panel">
+                <div class="report-chart-panel-title">📂 Top Categories</div>
+                ${catBarsHTML || '<p style="color:var(--text-secondary);">No category data</p>'}
+            </div>
+        </div>
+
+        <!-- Monthly Trend -->
+        <div class="report-chart-panel" style="margin-bottom:20px;">
+            <div class="report-chart-panel-title">📅 Monthly Complaint Trend (Last 6 Months)</div>
+            <div style="display:flex;align-items:flex-end;gap:12px;height:160px;margin-top:8px;">
+                ${monthBarsHTML || '<p style="color:var(--text-secondary);">No monthly data</p>'}
+            </div>
+        </div>
+
+        <!-- Top Locations -->
+        <div class="report-chart-panel">
+            <div class="report-chart-panel-title">📍 Top Complaint Locations</div>
+            <div style="margin-top:4px;">${locHTML}</div>
         </div>
     `;
 }
+
+
 
 function renderStatusChart(byStatus) {
     const total = Object.values(byStatus).reduce((a, b) => a + b, 0);
@@ -1042,70 +1109,7 @@ function renderTopLocations(topLocations) {
 }
 
 function exportReport() {
-    const content = document.getElementById('reportsContent');
-    if (!window.firebaseDB) {
-        showError('Database not available');
-        return;
-    }
-
-    const filename = `reports_export_${new Date().toISOString().split('T')[0]}.csv`;
-    if (content) content.innerHTML = '<p style="text-align:center; padding:20px;">Preparing report...</p>';
-
-    firebaseDB.collection('complaints').get().then(snapshot => {
-        const complaints = [];
-        snapshot.forEach(doc => complaints.push({ id: doc.id, ...doc.data() }));
-
-        const stats = calculateReportStats(complaints);
-
-        const rows = [];
-        rows.push(['"Smart Complaint Report"', '', ''].join(','));
-        rows.push(['Export Date', new Date().toLocaleString()].join(','));
-        rows.push([]);
-        rows.push(['Total Complaints', stats.total].join(','));
-        rows.push(['Resolved', stats.byStatus.resolved || 0].join(','));
-        rows.push(['Pending', stats.byStatus.pending || 0].join(','));
-        rows.push(['In Progress', stats.byStatus['in-progress'] || 0].join(','));
-        rows.push(['Rejected', stats.byStatus.rejected || 0].join(','));
-        rows.push(['Avg Resolution Days', stats.avgResolutionTime].join(','));
-        rows.push([]);
-        rows.push(['ID','Title','Category','SubCategory','Status','Priority','Location','Author','Created','Updated','Description'].join(','));
-
-        complaints.forEach(c => {
-            const created = c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : '';
-            const updated = c.updatedAt?.toDate ? c.updatedAt.toDate().toLocaleString() : '';
-            rows.push([
-                c.id,
-                `"${(c.title || '').replace(/"/g, '""')}"`,
-                c.category || '',
-                c.subCategory || '',
-                c.status || '',
-                c.priority || '',
-                `"${(c.location || '').replace(/"/g, '""')}"`,
-                c.authorEmail || '',
-                `"${created}"`,
-                `"${updated}"`,
-                `"${(c.description || '').replace(/"/g, '""')}"`
-            ].join(','));
-        });
-
-        const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-
-        if (content) displayReports(stats, complaints, content);
-        showSuccess('Report exported successfully!');
-
-    }).catch(err => {
-        console.error('Error exporting reports:', err);
-        if (content) content.innerHTML = '<p style="color:var(--danger); padding:20px;">Error preparing report</p>';
-        showError('Failed to export reports');
-    });
+    showSuccess('Report export functionality coming soon!');
 }
 
 // ================= SETTINGS PAGE =================
@@ -1342,18 +1346,495 @@ switchAdminTab = function(tabName, navItem) {
     }
 };
 
-// Attach quick action handlers (ensure Reports quick-action works even if inline handler missed)
-document.addEventListener('DOMContentLoaded', () => {
-    const quickReports = document.getElementById('quickReportsBtn');
-    if (quickReports) {
-        quickReports.addEventListener('click', (e) => {
-            e.preventDefault();
-            const navItem = document.querySelector('[data-tab="reports"]');
-            if (typeof switchAdminTab === 'function') switchAdminTab('reports', navItem || undefined);
-            if (typeof loadReports === 'function') loadReports();
-        });
+// ================= INIT =================
+document.addEventListener('DOMContentLoaded', checkAdminAuth);
+
+// ===============================
+// Mobile sidebar toggle (responsive)
+// ===============================
+function toggleSidebar() {
+    const sb = document.querySelector('.sidebar');
+    if (!sb) return;
+    const overlayId = 'mobileOverlay';
+    const existing = document.getElementById(overlayId);
+    const willOpen = !sb.classList.contains('open');
+
+    sb.classList.toggle('open');
+
+    if (willOpen) {
+        if (!existing) {
+            const ov = document.createElement('div');
+            ov.id = overlayId;
+            ov.className = 'mobile-overlay visible';
+            ov.onclick = () => toggleSidebar();
+            document.body.appendChild(ov);
+        } else {
+            existing.classList.add('visible');
+        }
+        document.body.style.overflow = 'hidden';
+    } else {
+        if (existing) existing.classList.remove('visible');
+        setTimeout(() => {
+            const el = document.getElementById(overlayId);
+            if (el) el.remove();
+        }, 300);
+        document.body.style.overflow = '';
+    }
+}
+
+// Close sidebar when clicking outside on small screens
+document.addEventListener('click', (e) => {
+    try {
+        if (window.innerWidth > 768) return;
+        const sb = document.querySelector('.sidebar');
+        const btn = document.getElementById('mobileMenuBtn');
+        if (!sb || !sb.classList.contains('open')) return;
+        if (btn && (e.target === btn || btn.contains(e.target))) return;
+        if (!sb.contains(e.target)) sb.classList.remove('open');
+    } catch (err) {
+        // ignore
     }
 });
 
-// ================= INIT =================
-document.addEventListener('DOMContentLoaded', checkAdminAuth);
+// =================================================================
+// CHALLAN COMPLAINTS ADMIN — FULL IMPLEMENTATION
+// =================================================================
+
+let allChallanData = []; // cache for search/filter
+let challanUnsubscribe = null; // Firestore listener handle
+
+const CHALLAN_STATUSES = ['Pending', 'Under Review', 'Approved', 'Rejected', 'Resolved'];
+
+const CHALLAN_COLLECTIONS = ['complaints', 'challanComplaints'];
+
+async function fetchMergedChallanDocs() {
+    const results = await Promise.allSettled(
+        CHALLAN_COLLECTIONS.map(collectionName => firebaseDB.collection(collectionName).get())
+    );
+
+    const docsMap = new Map();
+    results.forEach(result => {
+        if (result.status !== 'fulfilled') return;
+        result.value.forEach(doc => {
+            const data = doc.data();
+            const isChallan = data.complaintType === 'challan' || doc.ref.parent.id === 'challanComplaints';
+            if (!isChallan) return;
+            docsMap.set(doc.id, { id: doc.id, ...data });
+        });
+    });
+
+    return Array.from(docsMap.values()).sort((a, b) => {
+        const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : 0;
+        const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : 0;
+        return tb - ta;
+    });
+}
+
+async function updateMergedChallanDoc(id, data) {
+    await Promise.allSettled(
+        CHALLAN_COLLECTIONS.map(collectionName =>
+            firebaseDB.collection(collectionName).doc(id).update(data)
+        )
+    );
+}
+
+// ---- Load all challan complaints ----
+async function loadChallanComplaints() {
+    const list = document.getElementById('challanComplaintsList');
+    if (!list || !window.firebaseDB) return;
+
+    list.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:40px;">Loading challan complaints…</p>';
+
+    try {
+        allChallanData = await fetchMergedChallanDocs();
+        list.innerHTML = '';
+
+        if (!allChallanData.length) {
+            list.innerHTML = '<p style="text-align:center;color:var(--text-secondary);padding:60px;">No challan complaints found.</p>';
+            loadChallanStats([]);
+            return;
+        }
+
+        loadChallanStats(allChallanData);
+        allChallanData.forEach(d => list.appendChild(createChallanComplaintElement(d.id, d)));
+    } catch (err) {
+        console.error('Challan load error:', err);
+        list.innerHTML = '<p style="color:var(--danger);text-align:center;padding:40px;">Error loading challan complaints.</p>';
+    }
+}
+
+// ---- Challan Stats ----
+function loadChallanStats(docs) {
+    const grid = document.getElementById('challanStatsGrid');
+    if (!grid) return;
+
+    const counts = { total: docs.length, pending: 0, review: 0, approved: 0, rejected: 0, resolved: 0 };
+    docs.forEach(d => {
+        const s = (d.status || 'Pending').toLowerCase();
+        if (s === 'pending')      counts.pending++;
+        else if (s === 'under review') counts.review++;
+        else if (s === 'approved') counts.approved++;
+        else if (s === 'rejected') counts.rejected++;
+        else if (s === 'resolved') counts.resolved++;
+    });
+
+    grid.innerHTML = `
+        <div class="stat-card"><div class="stat-label">📋 Total</div><div class="stat-value">${counts.total}</div></div>
+        <div class="stat-card"><div class="stat-label">⏳ Pending</div><div class="stat-value" style="color:#fb5607;">${counts.pending}</div></div>
+        <div class="stat-card"><div class="stat-label">🔍 Under Review</div><div class="stat-value" style="color:#ffd60a;">${counts.review}</div></div>
+        <div class="stat-card"><div class="stat-label">✅ Approved</div><div class="stat-value" style="color:#51cf66;">${counts.approved}</div></div>
+        <div class="stat-card"><div class="stat-label">❌ Rejected</div><div class="stat-value" style="color:#d62828;">${counts.rejected}</div></div>
+        <div class="stat-card"><div class="stat-label">🏁 Resolved</div><div class="stat-value" style="color:#3a86ff;">${counts.resolved}</div></div>
+    `;
+}
+
+// ---- Complaint Row Card ----
+function createChallanComplaintElement(id, data) {
+    const el = document.createElement('div');
+    el.className = 'challan-admin-item complaint-item clickable-complaint';
+    el.dataset.status = (data.status || 'Pending').toLowerCase().replace(' ', '-');
+    el.dataset.challanId = id;
+    const ts = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+    const vehicleIcon = data.vehicleType === 'Two-Wheeler' ? '🛵' : data.vehicleType === 'Four-Wheeler' ? '🚗' : '🚌';
+
+    const statusCfg = getChallanStatusConfig(data.status || 'Pending');
+
+    el.innerHTML = `
+        <div style="flex:1;">
+            <div style="display:flex;gap:10px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
+                <span style="color:var(--primary-light);font-weight:700;font-size:15px;">#CHN-${id.slice(0,6).toUpperCase()}</span>
+                <span style="background:rgba(0,212,255,.15);padding:4px 10px;border-radius:12px;font-size:12px;">${vehicleIcon} ${data.vehicleType || 'Vehicle'}</span>
+                <span style="background:${statusCfg.bg};color:${statusCfg.color};padding:4px 12px;border-radius:12px;font-size:12px;font-weight:700;border:1px solid ${statusCfg.border};">${data.status || 'Pending'}</span>
+            </div>
+            <div style="font-weight:600;font-size:15px;margin-bottom:4px;font-family:monospace;letter-spacing:1px;color:var(--primary-light);">${escapeHtml(data.challanNumber || 'N/A')}</div>
+            <div style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;max-height:48px;overflow:hidden;">${escapeHtml((data.description || '').substring(0,140))}${(data.description||'').length>140?'…':''}</div>
+            <div style="display:flex;gap:16px;font-size:12px;color:var(--text-secondary);flex-wrap:wrap;">
+                <span>👤 ${escapeHtml(data.authorEmail || 'Unknown')}</span>
+                <span>🕒 ${timeAgo(ts)}</span>
+                <span>📅 ${ts.toLocaleDateString()}</span>
+                ${data.vehicleFrontImage ? '<span style="color:var(--primary-light);">📷 Images attached</span>' : ''}
+                ${data.rcDocumentUrl ? '<span style="color:var(--primary-light);">📋 RC attached</span>' : ''}
+                ${data.aadhaarDocumentUrl ? '<span style="color:var(--primary-light);">🪪 Aadhaar attached</span>' : ''}
+            </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
+            <select class="status-dropdown" onclick="event.stopPropagation();"
+                onchange="updateChallanStatus('${id}', this.value)">
+                ${CHALLAN_STATUSES.map(s => `<option value="${s}" ${s === (data.status||'Pending') ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+            <button class="btn btn-primary" style="padding:8px 12px;font-size:12px;"
+                onclick="event.stopPropagation(); openChallanModal('${id}')">
+                🔍 View Details
+            </button>
+        </div>
+    `;
+    el.addEventListener('click', () => openChallanModal(id));
+    return el;
+}
+
+function getChallanStatusConfig(status) {
+    switch ((status || '').toLowerCase()) {
+        case 'pending':      return { color: '#fb8500', bg: 'rgba(251,133,0,0.15)',   border: 'rgba(251,133,0,0.4)' };
+        case 'under review': return { color: '#ffd60a', bg: 'rgba(255,214,10,0.15)',  border: 'rgba(255,214,10,0.4)' };
+        case 'approved':     return { color: '#51cf66', bg: 'rgba(81,207,102,0.15)',  border: 'rgba(81,207,102,0.4)' };
+        case 'rejected':     return { color: '#d62828', bg: 'rgba(214,40,40,0.15)',   border: 'rgba(214,40,40,0.4)' };
+        case 'resolved':     return { color: '#3a86ff', bg: 'rgba(58,134,255,0.15)',  border: 'rgba(58,134,255,0.4)' };
+        default:             return { color: '#fb8500', bg: 'rgba(251,133,0,0.15)',   border: 'rgba(251,133,0,0.4)' };
+    }
+}
+
+// ---- Detail Modal ----
+function openChallanModal(id) {
+    const data = allChallanData.find(d => d.id === id);
+    if (!data) return;
+
+    const existingModal = document.getElementById('challanModal');
+    if (existingModal) existingModal.remove();
+
+    const ts = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
+    const updatedTs = data.updatedAt?.toDate ? data.updatedAt.toDate() : null;
+    const statusCfg = getChallanStatusConfig(data.status || 'Pending');
+    const vehicleIcon = data.vehicleType === 'Two-Wheeler' ? '🛵' : data.vehicleType === 'Four-Wheeler' ? '🚗' : '🚌';
+
+    const imgBlock = (url, label) => url
+        ? `<div>
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;font-weight:600;">${label}</div>
+              <a href="${url}" target="_blank">
+                <img src="${url}" alt="${label}" style="width:100%;height:160px;object-fit:cover;border-radius:10px;border:1px solid var(--border-color);cursor:pointer;transition:opacity .2s;" onmouseover="this.style.opacity=.8" onmouseout="this.style.opacity=1">
+              </a>
+           </div>`
+        : `<div style="background:var(--bg-dark);border:1px solid var(--border-color);border-radius:10px;height:100px;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);font-size:13px;">${label} — Not uploaded</div>`;
+
+    const docBlock = (url, label, icon) => url
+        ? `<a href="${url}" target="_blank" style="display:flex;align-items:center;gap:10px;background:var(--bg-dark);border:1px solid rgba(0,212,255,.3);border-radius:10px;padding:14px 18px;text-decoration:none;color:var(--primary-light);transition:all .2s;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='rgba(0,212,255,.3)'">
+            <span style="font-size:28px;">${icon}</span>
+            <div><div style="font-weight:600;font-size:14px;">${label}</div><div style="font-size:11px;color:var(--text-secondary);">Click to view / download</div></div>
+           </a>`
+        : `<div style="display:flex;align-items:center;gap:10px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:10px;padding:14px 18px;color:var(--text-secondary);">
+            <span style="font-size:28px;">${icon}</span>
+            <div>${label} — Not uploaded</div>
+           </div>`;
+
+    const modal = document.createElement('div');
+    modal.id = 'challanModal';
+    modal.style.cssText = `position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(5px);animation:fadeIn .3s ease;`;
+    modal.addEventListener('click', e => { if (e.target === modal) closeChallanModal(); });
+
+    modal.innerHTML = `
+        <div style="background:linear-gradient(135deg,var(--bg-card),rgba(0,212,255,.04));border:1px solid var(--border-color);border-radius:20px;max-width:960px;width:100%;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 24px 80px rgba(0,0,0,.6);">
+
+            <!-- Modal Header -->
+            <div style="background:linear-gradient(135deg,rgba(0,212,255,.12),rgba(131,56,236,.08));border-bottom:1px solid var(--border-color);padding:28px 32px;border-radius:20px 20px 0 0;position:sticky;top:0;z-index:10;">
+                <button onclick="closeChallanModal()" style="position:absolute;top:20px;right:20px;background:rgba(0,0,0,.3);border:1px solid var(--border-color);color:var(--text-primary);font-size:20px;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:all .3s;" onmouseover="this.style.background='rgba(214,40,40,.35)'" onmouseout="this.style.background='rgba(0,0,0,.3)'">×</button>
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                    <div style="width:52px;height:52px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 16px rgba(0,212,255,.35);">🚔</div>
+                    <div style="flex:1;">
+                        <h2 style="font-size:22px;color:var(--primary-light);font-weight:700;margin-bottom:8px;">Challan Complaint — #CHN-${id.slice(0,6).toUpperCase()}</h2>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <span style="background:rgba(0,212,255,.2);color:var(--primary-light);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid rgba(0,212,255,.3);">${vehicleIcon} ${data.vehicleType || 'Vehicle'}</span>
+                            <span style="background:${statusCfg.bg};color:${statusCfg.color};padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid ${statusCfg.border};">${data.status || 'Pending'}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Body -->
+            <div style="padding:32px;">
+
+                <!-- Vehicle & User Info Grid -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:28px;">
+                    <div style="background:var(--bg-dark);border:1px solid var(--border-color);border-radius:12px;padding:18px;">
+                        <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🔢 Challan / Vehicle No.</div>
+                        <div style="font-size:18px;font-weight:700;color:var(--primary-light);letter-spacing:2px;font-family:monospace;">${escapeHtml(data.challanNumber || 'N/A')}</div>
+                    </div>
+                    <div style="background:var(--bg-dark);border:1px solid var(--border-color);border-radius:12px;padding:18px;">
+                        <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">👤 Complainant</div>
+                        <div style="font-size:14px;font-weight:600;">${escapeHtml(data.authorName || '')}</div>
+                        <div style="font-size:13px;color:var(--text-secondary);">${escapeHtml(data.authorEmail || 'Unknown')}</div>
+                    </div>
+                    <div style="background:var(--bg-dark);border:1px solid var(--border-color);border-radius:12px;padding:18px;">
+                        <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🕒 Submitted</div>
+                        <div style="font-size:14px;font-weight:600;">${timeAgo(ts)}</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">${ts.toLocaleString()}</div>
+                    </div>
+                    ${updatedTs ? `<div style="background:var(--bg-dark);border:1px solid var(--border-color);border-radius:12px;padding:18px;">
+                        <div style="font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">🔄 Last Updated</div>
+                        <div style="font-size:14px;font-weight:600;">${timeAgo(updatedTs)}</div>
+                        <div style="font-size:12px;color:var(--text-secondary);">${updatedTs.toLocaleString()}</div>
+                    </div>` : ''}
+                </div>
+
+                <!-- Complaint Description -->
+                <div style="margin-bottom:28px;">
+                    <h3 style="font-size:15px;color:var(--primary-light);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📝 Complaint Description</h3>
+                    <div style="background:var(--bg-dark);border:1px solid var(--border-color);border-radius:12px;padding:20px;line-height:1.7;white-space:pre-wrap;">${escapeHtml(data.description || 'No description provided.')}</div>
+                </div>
+
+                <!-- Vehicle Photos -->
+                <div style="margin-bottom:28px;">
+                    <h3 style="font-size:15px;color:var(--primary-light);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📷 Vehicle Images</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                        ${imgBlock(data.vehicleFrontImage, '📷 Front Image')}
+                        ${imgBlock(data.vehicleBackImage,  '📷 Back Image')}
+                    </div>
+                </div>
+
+                <!-- Supporting Documents -->
+                <div style="margin-bottom:28px;">
+                    <h3 style="font-size:15px;color:var(--primary-light);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📄 Supporting Documents</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        ${docBlock(data.rcDocumentUrl,      'RC Certificate', '📋')}
+                        ${docBlock(data.aadhaarDocumentUrl, 'Aadhaar Card',   '🪪')}
+                    </div>
+                </div>
+
+                <!-- Admin Response (read current) -->
+                ${data.adminResponse ? `
+                <div style="margin-bottom:24px;">
+                    <h3 style="font-size:15px;color:var(--primary-light);font-weight:700;margin-bottom:12px;">🚔 Current Police Response</h3>
+                    <div style="background:rgba(58,134,255,.1);border:1px solid rgba(58,134,255,.4);border-radius:12px;padding:18px;line-height:1.6;color:var(--text-primary);">${escapeHtml(data.adminResponse)}</div>
+                </div>` : ''}
+
+                <!-- Actions: Status + Response -->
+                <div style="border-top:2px solid var(--border-color);padding-top:24px;">
+                    <h3 style="font-size:15px;color:var(--primary-light);font-weight:700;margin-bottom:16px;">⚙️ Update Status & Send Response</h3>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                        <div>
+                            <label class="form-label" style="margin-bottom:8px;">Update Status</label>
+                            <select id="challanModalStatus" class="status-dropdown" style="width:100%;padding:12px;">
+                                ${CHALLAN_STATUSES.map(s => `<option value="${s}" ${s===(data.status||'Pending')?'selected':''}>${s}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="display:flex;align-items:flex-end;">
+                            <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="applyChallanStatusUpdate('${id}')">
+                                💾 Update Status
+                            </button>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:12px;">
+                        <label class="form-label" style="margin-bottom:8px;">Police Response / Remarks</label>
+                        <textarea id="challanModalResponse" class="form-textarea"
+                            placeholder="e.g. Your challan has been cancelled after verification. / Proof is not sufficient, please provide…" rows="4"
+                            style="width:100%;min-height:100px;">${escapeHtml(data.adminResponse || '')}</textarea>
+                    </div>
+                    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                        <button class="btn btn-primary" style="flex:1;min-width:180px;" onclick="sendChallanResponse('${id}')">
+                            📤 Send Response to User
+                        </button>
+                        <button class="btn btn-secondary" onclick="closeChallanModal()">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function closeChallanModal() {
+    const m = document.getElementById('challanModal');
+    if (m) m.remove();
+}
+
+// ---- Update Status ----
+function updateChallanStatus(id, status) {
+    updateMergedChallanDoc(id, {
+        status,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        logActivity('challan_status_updated', `Challan complaint status updated to ${status}`, id);
+    }).catch(err => {
+        console.error(err);
+        showError('Failed to update challan status: ' + err.message);
+    });
+}
+
+function applyChallanStatusUpdate(id) {
+    const sel = document.getElementById('challanModalStatus');
+    if (!sel) return;
+    updateChallanStatus(id, sel.value);
+    showSuccess(`Status updated to "${sel.value}"`);
+}
+
+// ---- Send Admin Response ----
+function sendChallanResponse(id) {
+    const ta = document.getElementById('challanModalResponse');
+    if (!ta) return;
+    const msg = ta.value.trim();
+    if (!msg) { showError('Please enter a response message before sending.'); return; }
+
+    updateMergedChallanDoc(id, {
+        adminResponse: msg,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(() => {
+        logActivity('challan_response_sent', `Police response sent for challan complaint ${id.slice(0,6).toUpperCase()}`, id);
+        showSuccess('Response sent to user successfully!');
+        closeChallanModal();
+    }).catch(err => {
+        console.error(err);
+        showError('Failed to send response: ' + err.message);
+    });
+}
+
+// ---- Filter (status) ----
+function filterChallanComplaints(status, btn) {
+    document.querySelectorAll('#challanFilterBtns .filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    document.querySelectorAll('.challan-admin-item').forEach(item => {
+        const ds = item.dataset.status || '';
+        const show = status === 'all' || ds === status || ds === status.replace(' ', '-');
+        item.style.display = show ? 'flex' : 'none';
+    });
+}
+
+// ---- Search ----
+function searchChallanComplaints(query) {
+    const list = document.getElementById('challanComplaintsList');
+    if (!list) return;
+
+    if (!query.trim()) {
+        list.innerHTML = '';
+        allChallanData.forEach(d => list.appendChild(createChallanComplaintElement(d.id, d)));
+        return;
+    }
+
+    const q = query.toLowerCase();
+    const filtered = allChallanData.filter(d =>
+        (d.challanNumber || '').toLowerCase().includes(q) ||
+        (d.authorEmail   || '').toLowerCase().includes(q) ||
+        (d.authorName    || '').toLowerCase().includes(q) ||
+        (d.vehicleType   || '').toLowerCase().includes(q) ||
+        (d.status        || '').toLowerCase().includes(q) ||
+        (d.description   || '').toLowerCase().includes(q)
+    );
+
+    list.innerHTML = '';
+    if (filtered.length === 0) {
+        list.innerHTML = '<p style="text-align:center;padding:40px;color:var(--text-secondary);">No matching challan complaints found.</p>';
+        return;
+    }
+    filtered.forEach(d => list.appendChild(createChallanComplaintElement(d.id, d)));
+}
+
+// ---- Date Range Filter ----
+function filterChallanByDate() {
+    const from = document.getElementById('challanDateFrom')?.value;
+    const to   = document.getElementById('challanDateTo')?.value;
+    if (!from && !to) {
+        const list = document.getElementById('challanComplaintsList');
+        list.innerHTML = '';
+        allChallanData.forEach(d => list.appendChild(createChallanComplaintElement(d.id, d)));
+        return;
+    }
+
+    const fromDate = from ? new Date(from + 'T00:00:00') : null;
+    const toDate   = to   ? new Date(to   + 'T23:59:59') : null;
+
+    const filtered = allChallanData.filter(d => {
+        const ts = d.createdAt?.toDate ? d.createdAt.toDate() : new Date();
+        if (fromDate && ts < fromDate) return false;
+        if (toDate   && ts > toDate)   return false;
+        return true;
+    });
+
+    const list = document.getElementById('challanComplaintsList');
+    list.innerHTML = '';
+    if (filtered.length === 0) {
+        list.innerHTML = '<p style="text-align:center;padding:40px;color:var(--text-secondary);">No complaints in selected date range.</p>';
+        return;
+    }
+    filtered.forEach(d => list.appendChild(createChallanComplaintElement(d.id, d)));
+}
+
+// ---- Export CSV ----
+function exportChallanComplaints() {
+    if (allChallanData.length === 0) { showError('No challan complaints to export.'); return; }
+
+    const headers = ['Complaint ID', 'Challan/Vehicle No.', 'Vehicle Type', 'Author Name', 'Author Email', 'Status', 'Submitted', 'Description', 'Admin Response'];
+    const rows = allChallanData.map(d => {
+        const ts = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString() : 'N/A';
+        return [
+            `#CHN-${d.id.slice(0,6).toUpperCase()}`,
+            `"${(d.challanNumber || '').replace(/"/g,'""')}"`,
+            d.vehicleType || 'N/A',
+            `"${(d.authorName  || '').replace(/"/g,'""')}"`,
+            d.authorEmail || 'N/A',
+            d.status || 'Pending',
+            ts,
+            `"${(d.description   || '').replace(/"/g,'""').substring(0,200)}"`,
+            `"${(d.adminResponse || '').replace(/"/g,'""')}"`
+        ].join(',');
+    });
+
+    const csv  = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `challan_complaints_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showSuccess('Challan complaints exported successfully!');
+}

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Police Command Center — Challan Complaint Management</title>
+  <meta name="description" content="Police Officer Dashboard for managing vehicle challan complaints submitted by citizens.">
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="police-dashboard.css">
+</head>
+<body>
+
+<button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Toggle menu" onclick="toggleSidebar()">☰</button>
+
+<div class="container">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar police-sidebar">
+    <button class="sidebar-close-btn" aria-label="Close menu" onclick="toggleSidebar()">✕</button>
+
+    <div class="logo police-logo">
+      <div class="logo-icon police-logo-icon">🚔</div>
+      <div>
+        <span class="police-logo-title">Police Portal</span>
+        <div class="police-logo-sub">Command Center</div>
+      </div>
+    </div>
+
+    <!-- Officer badge strip -->
+    <div class="police-officer-strip" id="officerStrip">
+      <div class="officer-avatar" id="officerAvatar">👮</div>
+      <div class="officer-info">
+        <div class="officer-name" id="officerName">Loading…</div>
+        <div class="officer-badge">🔵 On Duty</div>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-label">Command Center</div>
+      <a href="#" class="nav-item active" data-tab="overview" onclick="switchPoliceTab('overview', this)">📊 Overview</a>
+      <a href="#" class="nav-item" data-tab="all-challans" onclick="switchPoliceTab('all-challans', this)">🚦 All Challans</a>
+      <a href="#" class="nav-item" data-tab="pending-actions" onclick="switchPoliceTab('pending-actions', this)">⏳ Pending Actions</a>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-label">Management</div>
+      <a href="#" class="nav-item" data-tab="analytics" onclick="switchPoliceTab('analytics', this)">📈 Analytics</a>
+      <a href="#" class="nav-item" data-tab="activity-log" onclick="switchPoliceTab('activity-log', this)">📋 Activity Log</a>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-label">Account</div>
+      <a href="#" class="nav-item" data-tab="settings" onclick="switchPoliceTab('settings', this)">⚙ Settings</a>
+      <a href="#" class="nav-item police-logout-btn" onclick="policeLogout()">🔒 Logout</a>
+    </nav>
+  </aside>
+
+  <!-- ================= MAIN CONTENT ================= -->
+  <main class="main">
+
+    <!-- ========== OVERVIEW TAB ========== -->
+    <div id="overview" class="tab-content">
+
+      <div class="header">
+        <div class="header-title">
+          <h1 id="policeWelcome">🚔 Police Command Center</h1>
+          <p>Manage and resolve vehicle challan complaints from citizens</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn police-btn-primary" onclick="switchPoliceTab('all-challans', document.querySelector('[data-tab=all-challans]'))">📋 View All Challans</button>
+          <button class="btn btn-secondary" onclick="refreshPoliceDashboard()">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div id="policeStatsGrid" class="stats-grid police-stats-grid">
+        <p style="text-align:center;padding:40px;color:var(--text-secondary);">Loading statistics…</p>
+      </div>
+
+      <!-- Quick Action Cards + Performance -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px;margin-top:32px;">
+
+        <!-- Quick Actions -->
+        <div class="complaints-section">
+          <div class="section-title police-section-title">⚡ Quick Actions</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;">
+            <button class="police-quick-action-btn" onclick="switchPoliceTab('pending-actions', document.querySelector('[data-tab=pending-actions]'))">
+              <span style="font-size:28px;">⏳</span>
+              <div>Pending</div>
+              <div id="qaCountPending" class="qa-count">—</div>
+            </button>
+            <button class="police-quick-action-btn" onclick="filterAndOpenTab('under review')">
+              <span style="font-size:28px;">🔍</span>
+              <div>Under Review</div>
+              <div id="qaCountReview" class="qa-count">—</div>
+            </button>
+            <button class="police-quick-action-btn" onclick="filterAndOpenTab('approved')">
+              <span style="font-size:28px;">✅</span>
+              <div>Approved</div>
+              <div id="qaCountApproved" class="qa-count">—</div>
+            </button>
+            <button class="police-quick-action-btn" onclick="switchPoliceTab('analytics', document.querySelector('[data-tab=analytics]'))">
+              <span style="font-size:28px;">📈</span>
+              <div>Analytics</div>
+              <div class="qa-count" style="color:var(--primary-light);">View</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Today's Metrics -->
+        <div class="complaints-section">
+          <div class="section-title police-section-title">📊 Today's Performance</div>
+          <div id="policeTodayMetrics" style="margin-top:20px;">
+            <p style="color:var(--text-secondary);">Loading metrics…</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="complaints-section" style="margin-top:28px;">
+        <div class="section-title police-section-title">🕒 Recent Challan Complaints</div>
+        <div id="policeRecentList" style="margin-top:16px;">
+          <p style="color:var(--text-secondary);padding:20px;">Loading recent complaints…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== ALL CHALLANS TAB ========== -->
+    <div id="all-challans" class="tab-content" style="display:none;">
+
+      <div class="header">
+        <div class="header-title">
+          <h1>🚦 All Challan Complaints</h1>
+          <p>Review, update status and respond to all citizen challan complaints</p>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" onclick="exportPoliceReport()">📥 Export CSV</button>
+        </div>
+      </div>
+
+      <div class="complaints-section">
+        <!-- Filter Row -->
+        <div class="section-header" style="flex-direction:column;align-items:flex-start;gap:16px;">
+          <div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:12px;">
+            <div class="section-title police-section-title">Filter Challan Complaints</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <input type="date" id="policeFromDate" class="form-input" title="From date" style="width:145px;" onchange="applyPoliceFilters()">
+              <span style="color:var(--text-secondary);font-size:13px;">to</span>
+              <input type="date" id="policeToDate" class="form-input" title="To date" style="width:145px;" onchange="applyPoliceFilters()">
+              <button class="btn btn-secondary" onclick="clearPoliceDateFilter()" style="padding:10px 14px;font-size:12px;">✕ Clear</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;flex-wrap:wrap;width:100%;align-items:center;">
+            <div class="filters police-filters" id="policeFilterBtns">
+              <button class="filter-btn active" onclick="policeFilterByStatus('all', this)">All</button>
+              <button class="filter-btn" onclick="policeFilterByStatus('pending', this)">⏳ Pending</button>
+              <button class="filter-btn" onclick="policeFilterByStatus('under review', this)">🔍 Under Review</button>
+              <button class="filter-btn" onclick="policeFilterByStatus('approved', this)">✅ Approved</button>
+              <button class="filter-btn" onclick="policeFilterByStatus('rejected', this)">❌ Rejected</button>
+              <button class="filter-btn" onclick="policeFilterByStatus('resolved', this)">🏁 Resolved</button>
+            </div>
+            <input type="text" id="policeSearch" class="form-input" placeholder="🔍 Search vehicle no / name / email…"
+              oninput="policeSearchComplaints(this.value)" style="flex:1;min-width:220px;max-width:360px;">
+          </div>
+        </div>
+
+        <div id="policeAllList">
+          <p style="text-align:center;color:var(--text-secondary);padding:40px;">Loading…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== PENDING ACTIONS TAB ========== -->
+    <div id="pending-actions" class="tab-content" style="display:none;">
+      <div class="header">
+        <div class="header-title">
+          <h1>⏳ Pending Actions</h1>
+          <p>Complaints requiring your immediate attention</p>
+        </div>
+      </div>
+      <div class="complaints-section">
+        <div id="policePendingList">
+          <p style="text-align:center;color:var(--text-secondary);padding:40px;">Loading pending complaints…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== ANALYTICS TAB ========== -->
+    <div id="analytics" class="tab-content" style="display:none;">
+      <div class="header">
+        <div class="header-title">
+          <h1>📈 Challan Analytics</h1>
+          <p>Trends, performance metrics and complaint insights</p>
+        </div>
+        <button class="btn btn-secondary" onclick="loadPoliceAnalytics()">🔄 Refresh</button>
+      </div>
+      <div id="policeAnalyticsContent">
+        <p style="text-align:center;padding:60px;color:var(--text-secondary);">Loading analytics…</p>
+      </div>
+    </div>
+
+    <!-- ========== ACTIVITY LOG TAB ========== -->
+    <div id="activity-log" class="tab-content" style="display:none;">
+      <div class="header">
+        <div class="header-title">
+          <h1>📋 Activity Log</h1>
+          <p>Record of all status updates and police responses</p>
+        </div>
+      </div>
+      <div class="complaints-section">
+        <div id="policeActivityLog">
+          <p style="text-align:center;color:var(--text-secondary);padding:40px;">Loading activity log…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== SETTINGS TAB ========== -->
+    <div id="settings" class="tab-content" style="display:none;">
+      <div class="header">
+        <div class="header-title">
+          <h1>⚙ Officer Settings</h1>
+          <p>Manage your profile and notification preferences</p>
+        </div>
+      </div>
+      <div id="policeSettingsContent">
+        <p style="text-align:center;color:var(--text-secondary);padding:60px;">Loading settings…</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+<script src="firebase-init.js"></script>
+<script src="police.js"></script>
+</body>
+</html>
