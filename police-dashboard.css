@@ -13,10 +13,25 @@
   --police-sidebar-border: rgba(0,87,184,0.3);
 }
 
+.light-theme {
+  --police-primary:      #1a73e8;
+  --police-primary-light:#4285f4;
+  --police-accent:       #f9ab00;
+  --police-danger:       #d93025;
+  --police-success:      #1e8e3e;
+  --police-sidebar-bg:   #f1f3f4;
+  --police-sidebar-border: rgba(0,87,184,0.15);
+}
+
 /* ---- Sidebar Override ---- */
 .police-sidebar {
   background: linear-gradient(180deg, #00122e 0%, #001a44 60%, #0d1033 100%) !important;
   border-right: 1px solid var(--police-sidebar-border) !important;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.light-theme .police-sidebar {
+  background: linear-gradient(180deg, #e8f0fe 0%, #f1f3f4 100%) !important;
 }
 
 /* Police logo */
@@ -352,4 +367,86 @@
   .police-stats-grid { grid-template-columns: 1fr; }
   .police-officer-strip { padding: 10px; }
   .officer-avatar { width: 38px; height: 38px; font-size: 22px; }
+}
+
+/* ---- Light Theme Overrides for Police Dashboard ---- */
+.light-theme .police-logo-title {
+  color: #0b1e36 !important;
+}
+.light-theme .police-logo-sub {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+.light-theme .police-sidebar .nav-label {
+  color: rgba(0, 0, 0, 0.45) !important;
+}
+.light-theme .police-sidebar .nav-item {
+  color: rgba(0, 0, 0, 0.7) !important;
+}
+.light-theme .police-sidebar .nav-item:hover {
+  background: rgba(0, 87, 184, 0.1) !important;
+  color: #0057b8 !important;
+}
+.light-theme .police-sidebar .nav-item.active {
+  background: linear-gradient(135deg, #1a73e8, #4285f4) !important;
+  color: #ffffff !important;
+  border-left: 3px solid #f9ab00;
+  box-shadow: 0 8px 20px rgba(26, 115, 232, 0.2) !important;
+}
+.light-theme .police-officer-strip {
+  background: rgba(26, 115, 232, 0.08);
+  border-color: rgba(26, 115, 232, 0.2);
+}
+.light-theme .officer-name {
+  color: #0c213c !important;
+}
+.light-theme .officer-badge {
+  color: #c48c02 !important;
+}
+.light-theme .police-section-title {
+  color: #1a73e8 !important;
+}
+.light-theme .police-section-label {
+  color: #1a73e8 !important;
+}
+.light-theme .police-quick-action-btn {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(26, 115, 232, 0.15) !important;
+}
+.light-theme .police-quick-action-btn:hover {
+  background: rgba(26, 115, 232, 0.1) !important;
+  border-color: #1a73e8 !important;
+  box-shadow: 0 10px 28px rgba(26, 115, 232, 0.12) !important;
+}
+.light-theme .police-metric-box {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+.light-theme .police-metric-box:hover {
+  border-color: #1a73e8 !important;
+  background: rgba(26, 115, 232, 0.05) !important;
+}
+.light-theme .police-info-box {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+}
+.light-theme .police-info-box:hover {
+  border-color: #1a73e8 !important;
+}
+.light-theme .police-challan-id {
+  color: #1a73e8 !important;
+}
+.light-theme .police-vehicle-badge {
+  background: rgba(26, 115, 232, 0.1) !important;
+  border-color: rgba(26, 115, 232, 0.2) !important;
+  color: #1a73e8 !important;
+}
+.light-theme .police-vehicle-number {
+  color: #1a73e8 !important;
+}
+.light-theme .police-logout-btn {
+  color: rgba(214, 40, 40, 0.8) !important;
+}
+.light-theme .police-logout-btn:hover {
+  background: rgba(214, 40, 40, 0.1) !important;
+  color: #d62828 !important;
 }

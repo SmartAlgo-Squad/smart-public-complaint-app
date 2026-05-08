@@ -702,7 +702,99 @@ function handleCategoryChange() {
         otherInputDiv.style.display = 'none';
         otherInput.value = '';
     }
+
+    // update priority when category/sub-category changes
+    try { updatePriorityFromInputs(); } catch(e) { /* ignore */ }
 }
+
+// ===============================
+// Priority auto-selection logic
+// ===============================
+const priorityOrder = ['Low','Medium','High','Critical'];
+
+const subCategoryPriorityOverrides = {
+    'Sinkhole': 'Critical',
+    'Flooding': 'Critical',
+    'No Water Supply': 'High',
+    'Water Leakage': 'High',
+    'Blocked Drain': 'High',
+    'Drain Overflow': 'High',
+    'Light Not Working': 'Low',
+    'Pothole': 'Medium',
+    'Overflowing Garbage Bin': 'Medium',
+    'Illegal Dump Site': 'Medium',
+    'Construction Noise': 'Low'
+};
+
+function severityRank(level) {
+    const idx = priorityOrder.indexOf(level);
+    return idx === -1 ? 0 : idx;
+}
+
+function higherSeverity(a, b) {
+    return severityRank(a) >= severityRank(b) ? a : b;
+}
+
+function computePriorityFromInputs() {
+    const subCategory = (document.getElementById('subCategory')?.value || '').trim();
+    const category = (document.getElementById('category')?.value || '').trim();
+    const affectedRaw = document.getElementById('affected')?.value || '';
+    const affected = Number(affectedRaw) || 0;
+
+    // base priority from affected people thresholds
+    let base = 'Low';
+    if (affected >= 50) base = 'Critical';
+    else if (affected >= 10) base = 'High';
+    else if (affected >= 3) base = 'Medium';
+
+    // override from sub-category if present
+    let override = null;
+    if (subCategory && subCategoryPriorityOverrides[subCategory]) {
+        override = subCategoryPriorityOverrides[subCategory];
+    }
+
+    // fallback overrides by category
+    const categoryDefaults = {
+        'Road Damage': 'Medium',
+        'Water Supply': 'High',
+        'Streetlight': 'Low',
+        'Garbage Disposal': 'Medium',
+        'Noise Pollution': 'Low',
+        'Drainage': 'High'
+    };
+    const catDefault = categoryDefaults[category] || null;
+
+    // decide final priority: take the highest severity among base, override, category default
+    let final = base;
+    if (override) final = higherSeverity(final, override);
+    if (catDefault) final = higherSeverity(final, catDefault);
+
+    return final;
+}
+
+function setPrioritySelect(value) {
+    const sel = document.getElementById('priority');
+    if (!sel) return;
+    // only set if value exists in options
+    const opt = Array.from(sel.options).find(o => o.value === value);
+    if (opt) sel.value = value;
+}
+
+function updatePriorityFromInputs() {
+    const p = computePriorityFromInputs();
+    setPrioritySelect(p);
+}
+
+// Attach listeners so priority updates as user types/selects
+document.addEventListener('DOMContentLoaded', () => {
+    const sub = document.getElementById('subCategory');
+    const cat = document.getElementById('category');
+    const aff = document.getElementById('affected');
+
+    if (sub) sub.addEventListener('change', updatePriorityFromInputs);
+    if (cat) cat.addEventListener('change', updatePriorityFromInputs);
+    if (aff) aff.addEventListener('input', updatePriorityFromInputs);
+});
 
 // ===============================
 // AI Category Suggestion

@@ -1,4 +1,4 @@
-﻿// admin.js - FINAL WORKING ADMIN DASHBOARD LOGIC
+// admin.js - FINAL WORKING ADMIN DASHBOARD LOGIC
 
 // ================= GLOBAL STATE =================
 let currentAdminUser = null;
@@ -37,8 +37,8 @@ function _adminShowToast(msg, type) {
     setTimeout(() => { if (toast.parentNode) toast.remove(); }, type === 'error' ? 5000 : 3000);
 }
 
-function showError(msg)   { console.error(msg); _adminShowToast(msg, 'error');   }
-function showSuccess(msg) { console.log(msg);   _adminShowToast(msg, 'success'); }
+function showError(msg) { console.error(msg); _adminShowToast(msg, 'error'); }
+function showSuccess(msg) { console.log(msg); _adminShowToast(msg, 'success'); }
 
 function timeAgo(date) {
     const diff = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -167,7 +167,7 @@ function loadActivityLog() {
             snapshot.forEach(doc => {
                 const data = doc.data();
                 if (data.complaintType === 'challan') return; // Ignore challans
-                
+
                 const ts = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
                 activities.push({
                     type: 'complaint_created',
@@ -217,11 +217,11 @@ function displayActivityLog(activities, container) {
     }
 
     container.innerHTML = activities.map(activity => {
-        const icon = activity.type === 'complaint_created' ? '📋' : 
-                    activity.type === 'status_updated' ? '🔄' :
-                    activity.type === 'complaint_resolved' ? '✅' :
+        const icon = activity.type === 'complaint_created' ? '📋' :
+            activity.type === 'status_updated' ? '🔄' :
+                activity.type === 'complaint_resolved' ? '✅' :
                     activity.type === 'complaint_rejected' ? '❌' : '📝';
-        
+
         return `
             <div class="activity-item" style="padding:16px; border-bottom:1px solid var(--border-color); display:flex; gap:12px; align-items:flex-start;">
                 <div style="font-size:20px;">${icon}</div>
@@ -236,7 +236,7 @@ function displayActivityLog(activities, container) {
 
 function logActivity(type, message, complaintId = null) {
     if (!window.firebaseDB || !currentAdminUser) return;
-    
+
     firebaseDB.collection('activityLog').add({
         type,
         message,
@@ -261,14 +261,14 @@ function createAdminComplaintElement(id, data) {
 
     const assignedTo = data.assignedTo || 'Unassigned';
     const priority = data.priority || 'Medium';
-    const priorityColor = priority === 'Critical' ? '#d62828' : 
-                         priority === 'High' ? '#fb5607' : 
-                         priority === 'Medium' ? '#3a86ff' : '#00d4ff';
+    const priorityColor = priority === 'Critical' ? '#d62828' :
+        priority === 'High' ? '#fb5607' :
+            priority === 'Medium' ? '#3a86ff' : '#00d4ff';
 
     el.innerHTML = `
         <div class="admin-complaint-details" style="flex:1;">
             <div class="complaint-meta-row" style="display:flex; gap:12px; margin-bottom:8px; align-items:center; flex-wrap:wrap;">
-                <span class="meta-id" style="color:var(--primary-light); font-weight:600;">#${id.slice(0,6).toUpperCase()}</span>
+                <span class="meta-id" style="color:var(--primary-light); font-weight:600;">#${id.slice(0, 6).toUpperCase()}</span>
                 <span class="meta-category" style="background:rgba(0,212,255,.15); padding:4px 10px; border-radius:12px; font-size:12px;">${data.category || 'General'}</span>
                 ${data.subCategory ? `<span class="meta-subcategory" style="background:rgba(131,56,236,.15); padding:4px 10px; border-radius:12px; font-size:11px; color:#8338ec;">${data.subCategory}</span>` : ''}
                 <span style="background:${priorityColor}20; color:${priorityColor}; padding:4px 10px; border-radius:12px; font-size:11px; font-weight:600;">${priority}</span>
@@ -332,13 +332,13 @@ function openComplaintModal(id, data) {
     const ts = data.createdAt?.toDate ? data.createdAt.toDate() : new Date();
     const updatedTs = data.updatedAt?.toDate ? data.updatedAt.toDate() : null;
     const priority = data.priority || 'Medium';
-    const priorityColor = priority === 'Critical' ? '#d62828' : 
-                         priority === 'High' ? '#fb5607' : 
-                         priority === 'Medium' ? '#3a86ff' : '#00d4ff';
+    const priorityColor = priority === 'Critical' ? '#d62828' :
+        priority === 'High' ? '#fb5607' :
+            priority === 'Medium' ? '#3a86ff' : '#00d4ff';
     const status = (data.status || 'pending').toLowerCase();
-    const statusColor = status === 'resolved' ? '#3a86ff' : 
-                       status === 'rejected' ? '#d62828' : 
-                       status === 'in-progress' ? '#fb5607' : '#00d4ff';
+    const statusColor = status === 'resolved' ? '#3a86ff' :
+        status === 'rejected' ? '#d62828' :
+            status === 'in-progress' ? '#fb5607' : '#00d4ff';
 
     // Format media display
     let mediaHTML = '';
@@ -348,17 +348,17 @@ function openComplaintModal(id, data) {
                 <h3 style="font-size:14px; color:var(--text-secondary); margin-bottom:12px; font-weight:600;">📸 Attached Media (${data.media.length})</h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px;">
                     ${data.media.map((media, idx) => {
-                        if (media.type === 'image') {
-                            return `<div style="position:relative; border-radius:8px; overflow:hidden; border:1px solid var(--border-color);">
+            if (media.type === 'image') {
+                return `<div style="position:relative; border-radius:8px; overflow:hidden; border:1px solid var(--border-color);">
                                 <img src="${media.url}" alt="${media.name || 'Image'}" style="width:100%; height:150px; object-fit:cover; cursor:pointer;" onclick="window.open('${media.url}', '_blank')">
                             </div>`;
-                        } else if (media.type === 'video') {
-                            return `<div style="position:relative; border-radius:8px; overflow:hidden; border:1px solid var(--border-color);">
+            } else if (media.type === 'video') {
+                return `<div style="position:relative; border-radius:8px; overflow:hidden; border:1px solid var(--border-color);">
                                 <video src="${media.url}" controls style="width:100%; height:150px; object-fit:cover;"></video>
                             </div>`;
-                        }
-                        return '';
-                    }).join('')}
+            }
+            return '';
+        }).join('')}
                 </div>
             </div>
         `;
@@ -377,7 +377,7 @@ function openComplaintModal(id, data) {
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                             <span style="background:rgba(0,212,255,.2); color:var(--primary-light); padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(0,212,255,0.3);">${escapeHtml(data.category || 'General')}</span>
                             ${data.subCategory ? `<span style="background:rgba(131,56,236,.2); color:#8338ec; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(131,56,236,0.3);">${escapeHtml(data.subCategory)}</span>` : ''}
-                            <span style="background:rgba(131,56,236,.2); color:#8338ec; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(131,56,236,0.3);">#${id.slice(0,6).toUpperCase()}</span>
+                            <span style="background:rgba(131,56,236,.2); color:#8338ec; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid rgba(131,56,236,0.3);">#${id.slice(0, 6).toUpperCase()}</span>
                             <span style="background:${statusColor}20; color:${statusColor}; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; border:1px solid ${statusColor}40; text-transform:uppercase;">${status.replace('-', ' ')}</span>
                             <span style="background:${priorityColor}20; color:${priorityColor}; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; border:1px solid ${priorityColor}40;">${priority} Priority</span>
                         </div>
@@ -516,7 +516,7 @@ function deleteComplaint(id) {
 
 function rejectComplaint(id) {
     const reason = prompt('Enter rejection reason (optional):');
-    
+
     firebaseDB.collection('complaints').doc(id).update({
         status: 'rejected',
         rejectionReason: reason || 'No reason provided',
@@ -555,7 +555,7 @@ function loadAllComplaints() {
             snapshot.forEach(doc => {
                 const data = doc.data();
                 if (data.complaintType === 'challan') return; // Ignore challans
-                
+
                 const complaintData = { id: doc.id, ...data };
                 allComplaintsData.push(complaintData);
                 list.appendChild(
@@ -588,13 +588,13 @@ function searchComplaints(query) {
         const location = (complaint.location || '').toLowerCase();
         const email = (complaint.authorEmail || '').toLowerCase();
         const status = (complaint.status || '').toLowerCase();
-        
-        return title.includes(lowerQuery) || 
-               description.includes(lowerQuery) || 
-               category.includes(lowerQuery) || 
-               location.includes(lowerQuery) || 
-               email.includes(lowerQuery) ||
-               status.includes(lowerQuery);
+
+        return title.includes(lowerQuery) ||
+            description.includes(lowerQuery) ||
+            category.includes(lowerQuery) ||
+            location.includes(lowerQuery) ||
+            email.includes(lowerQuery) ||
+            status.includes(lowerQuery);
     });
 
     list.innerHTML = '';
@@ -858,34 +858,34 @@ function calculateReportStats(complaints) {
 
 function displayReports(stats, complaints, container) {
     const resolutionRate = stats.total > 0 ? Math.round((stats.byStatus.resolved / stats.total) * 100) : 0;
-    const rejectedRate   = stats.total > 0 ? Math.round((stats.byStatus.rejected  / stats.total) * 100) : 0;
-    const progressRate   = stats.total > 0 ? Math.round((stats.byStatus['in-progress'] / stats.total) * 100) : 0;
-    const pendingRate    = stats.total > 0 ? Math.round((stats.byStatus.pending    / stats.total) * 100) : 0;
+    const rejectedRate = stats.total > 0 ? Math.round((stats.byStatus.rejected / stats.total) * 100) : 0;
+    const progressRate = stats.total > 0 ? Math.round((stats.byStatus['in-progress'] / stats.total) * 100) : 0;
+    const pendingRate = stats.total > 0 ? Math.round((stats.byStatus.pending / stats.total) * 100) : 0;
 
     container.style.padding = '28px';
 
     // Category bars
-    const catColors = ['#00d4ff','#8338ec','#ff006e','#fb5607','#3a86ff'];
+    const catColors = ['#00d4ff', '#8338ec', '#ff006e', '#fb5607', '#3a86ff'];
     const catMax = stats.topCategories.length ? stats.topCategories[0].count : 1;
     const catBarsHTML = stats.topCategories.map((item, i) => {
         const pct = Math.round((item.count / catMax) * 100);
         return `<div class="report-status-row">
-            <div class="report-status-dot" style="background:${catColors[i%catColors.length]};"></div>
+            <div class="report-status-dot" style="background:${catColors[i % catColors.length]};"></div>
             <div class="report-status-label">${item.category}</div>
-            <div class="report-status-bar-wrap"><div class="report-status-bar" style="width:${pct}%;background:${catColors[i%catColors.length]};"></div></div>
-            <div class="report-status-count" style="color:${catColors[i%catColors.length]};">${item.count}</div>
+            <div class="report-status-bar-wrap"><div class="report-status-bar" style="width:${pct}%;background:${catColors[i % catColors.length]};"></div></div>
+            <div class="report-status-count" style="color:${catColors[i % catColors.length]};">${item.count}</div>
         </div>`;
     }).join('');
 
     // Status bars
     const statusCfg = [
-        { key:'pending',     label:'Pending',     color:'#00d4ff', count: stats.byStatus.pending },
-        { key:'in-progress', label:'In Progress', color:'#fb5607', count: stats.byStatus['in-progress'] },
-        { key:'resolved',    label:'Resolved',    color:'#51cf66', count: stats.byStatus.resolved },
-        { key:'rejected',    label:'Rejected',    color:'#d62828', count: stats.byStatus.rejected },
+        { key: 'pending', label: 'Pending', color: '#00d4ff', count: stats.byStatus.pending },
+        { key: 'in-progress', label: 'In Progress', color: '#fb5607', count: stats.byStatus['in-progress'] },
+        { key: 'resolved', label: 'Resolved', color: '#51cf66', count: stats.byStatus.resolved },
+        { key: 'rejected', label: 'Rejected', color: '#d62828', count: stats.byStatus.rejected },
     ];
     const statusBarsHTML = statusCfg.map(s => {
-        const pct = stats.total > 0 ? Math.round((s.count/stats.total)*100) : 0;
+        const pct = stats.total > 0 ? Math.round((s.count / stats.total) * 100) : 0;
         return `<div class="report-status-row">
             <div class="report-status-dot" style="background:${s.color};"></div>
             <div class="report-status-label">${s.label}</div>
@@ -896,14 +896,14 @@ function displayReports(stats, complaints, container) {
 
     // Monthly bars
     const monthEntries = Object.entries(stats.byMonth).sort().slice(-6);
-    const monthMax = monthEntries.length ? Math.max(...monthEntries.map(e=>e[1]),1) : 1;
-    const monthGrads = ['linear-gradient(180deg,#00d4ff,#3a86ff)','linear-gradient(180deg,#8338ec,#00d4ff)','linear-gradient(180deg,#ff006e,#8338ec)','linear-gradient(180deg,#fb5607,#ff006e)','linear-gradient(180deg,#3a86ff,#51cf66)','linear-gradient(180deg,#51cf66,#3a86ff)'];
-    const monthBarsHTML = monthEntries.map(([mk,cnt],i) => {
-        const hPct = Math.round((cnt/monthMax)*100);
-        const label = new Date(mk+'-01').toLocaleDateString('en-US',{month:'short',year:'2-digit'});
+    const monthMax = monthEntries.length ? Math.max(...monthEntries.map(e => e[1]), 1) : 1;
+    const monthGrads = ['linear-gradient(180deg,#00d4ff,#3a86ff)', 'linear-gradient(180deg,#8338ec,#00d4ff)', 'linear-gradient(180deg,#ff006e,#8338ec)', 'linear-gradient(180deg,#fb5607,#ff006e)', 'linear-gradient(180deg,#3a86ff,#51cf66)', 'linear-gradient(180deg,#51cf66,#3a86ff)'];
+    const monthBarsHTML = monthEntries.map(([mk, cnt], i) => {
+        const hPct = Math.round((cnt / monthMax) * 100);
+        const label = new Date(mk + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
         return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;">
             <span style="font-size:12px;font-weight:700;color:var(--text-primary);">${cnt}</span>
-            <div style="width:100%;background:${monthGrads[i%monthGrads.length]};height:${hPct}%;border-radius:6px 6px 0 0;box-shadow:0 4px 12px rgba(0,212,255,0.25);min-height:4px;"></div>
+            <div style="width:100%;background:${monthGrads[i % monthGrads.length]};height:${hPct}%;border-radius:6px 6px 0 0;box-shadow:0 4px 12px rgba(0,212,255,0.25);min-height:4px;"></div>
             <span style="font-size:10px;color:var(--text-secondary);text-align:center;">${label}</span>
         </div>`;
     }).join('');
@@ -1014,7 +1014,7 @@ function renderCategoryChart(topCategories) {
     if (topCategories.length === 0) return '<p style="color:var(--text-secondary);">No data available</p>';
 
     const max = Math.max(...topCategories.map(c => c.count));
-    
+
     return topCategories.map((item, index) => {
         const percent = max > 0 ? Math.round((item.count / max) * 100) : 0;
         const colors = ['#00d4ff', '#8338ec', '#ff006e', '#fb5607', '#3a86ff'];
@@ -1062,10 +1062,10 @@ function renderMonthlyChart(byMonth) {
     return `
         <div style="display:flex; align-items:flex-end; gap:12px; height:200px; padding:20px 0;">
             ${entries.map(([month, count], index) => {
-                const height = Math.round((count / max) * 100);
-                const color = colors[index % colors.length];
-                const monthName = new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                return `
+        const height = Math.round((count / max) * 100);
+        const color = colors[index % colors.length];
+        const monthName = new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        return `
                     <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px;">
                         <div style="width:100%; background:var(--bg-dark); border-radius:8px 8px 0 0; height:180px; display:flex; align-items:flex-end; position:relative;">
                             <div style="width:100%; background:${color}; height:${height}%; border-radius:8px 8px 0 0; transition:height 0.5s ease; box-shadow:0 4px 12px ${color}40;"></div>
@@ -1074,19 +1074,19 @@ function renderMonthlyChart(byMonth) {
                         <span style="font-size:11px; color:var(--text-secondary); text-align:center; font-weight:600;">${monthName}</span>
                     </div>
                 `;
-            }).join('')}
+    }).join('')}
         </div>
         <div style="margin-top:16px; padding:12px; background:var(--bg-dark); border-radius:8px; border:1px solid var(--border-color);">
             <div style="font-size:12px; color:var(--text-secondary); margin-bottom:8px; font-weight:600;">Legend:</div>
             <div style="display:flex; gap:16px; flex-wrap:wrap;">
                 ${entries.map(([month, count], index) => {
-                    const color = colors[index % colors.length];
-                    const monthName = new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' });
-                    return `<div style="display:flex; align-items:center; gap:6px;">
+        const color = colors[index % colors.length];
+        const monthName = new Date(month + '-01').toLocaleDateString('en-US', { month: 'short' });
+        return `<div style="display:flex; align-items:center; gap:6px;">
                         <div style="width:16px; height:16px; background:${color}; border-radius:4px;"></div>
                         <span style="font-size:11px; color:var(--text-secondary);">${monthName}</span>
                     </div>`;
-                }).join('')}
+    }).join('')}
             </div>
         </div>
     `;
@@ -1330,9 +1330,9 @@ function saveSystemConfig() {
 // ================= TAB SWITCHING ENHANCEMENT =================
 // Enhance switchAdminTab to load tab content
 const originalSwitchAdminTabFunction = switchAdminTab;
-switchAdminTab = function(tabName, navItem) {
+switchAdminTab = function (tabName, navItem) {
     originalSwitchAdminTabFunction(tabName, navItem);
-    
+
     // Load content when switching to specific tabs
     if (tabName === 'reports') {
         setTimeout(() => loadReports(), 100);
@@ -1471,7 +1471,7 @@ function loadChallanStats(docs) {
     const counts = { total: docs.length, pending: 0, review: 0, approved: 0, rejected: 0, resolved: 0 };
     docs.forEach(d => {
         const s = (d.status || 'Pending').toLowerCase();
-        if (s === 'pending')      counts.pending++;
+        if (s === 'pending') counts.pending++;
         else if (s === 'under review') counts.review++;
         else if (s === 'approved') counts.approved++;
         else if (s === 'rejected') counts.rejected++;
@@ -1502,12 +1502,12 @@ function createChallanComplaintElement(id, data) {
     el.innerHTML = `
         <div style="flex:1;">
             <div style="display:flex;gap:10px;margin-bottom:8px;align-items:center;flex-wrap:wrap;">
-                <span style="color:var(--primary-light);font-weight:700;font-size:15px;">#CHN-${id.slice(0,6).toUpperCase()}</span>
+                <span style="color:var(--primary-light);font-weight:700;font-size:15px;">#CHN-${id.slice(0, 6).toUpperCase()}</span>
                 <span style="background:rgba(0,212,255,.15);padding:4px 10px;border-radius:12px;font-size:12px;">${vehicleIcon} ${data.vehicleType || 'Vehicle'}</span>
                 <span style="background:${statusCfg.bg};color:${statusCfg.color};padding:4px 12px;border-radius:12px;font-size:12px;font-weight:700;border:1px solid ${statusCfg.border};">${data.status || 'Pending'}</span>
             </div>
             <div style="font-weight:600;font-size:15px;margin-bottom:4px;font-family:monospace;letter-spacing:1px;color:var(--primary-light);">${escapeHtml(data.challanNumber || 'N/A')}</div>
-            <div style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;max-height:48px;overflow:hidden;">${escapeHtml((data.description || '').substring(0,140))}${(data.description||'').length>140?'…':''}</div>
+            <div style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;max-height:48px;overflow:hidden;">${escapeHtml((data.description || '').substring(0, 140))}${(data.description || '').length > 140 ? '…' : ''}</div>
             <div style="display:flex;gap:16px;font-size:12px;color:var(--text-secondary);flex-wrap:wrap;">
                 <span>👤 ${escapeHtml(data.authorEmail || 'Unknown')}</span>
                 <span>🕒 ${timeAgo(ts)}</span>
@@ -1520,7 +1520,7 @@ function createChallanComplaintElement(id, data) {
         <div style="display:flex;flex-direction:column;gap:8px;min-width:160px;">
             <select class="status-dropdown" onclick="event.stopPropagation();"
                 onchange="updateChallanStatus('${id}', this.value)">
-                ${CHALLAN_STATUSES.map(s => `<option value="${s}" ${s === (data.status||'Pending') ? 'selected' : ''}>${s}</option>`).join('')}
+                ${CHALLAN_STATUSES.map(s => `<option value="${s}" ${s === (data.status || 'Pending') ? 'selected' : ''}>${s}</option>`).join('')}
             </select>
             <button class="btn btn-primary" style="padding:8px 12px;font-size:12px;"
                 onclick="event.stopPropagation(); openChallanModal('${id}')">
@@ -1534,12 +1534,12 @@ function createChallanComplaintElement(id, data) {
 
 function getChallanStatusConfig(status) {
     switch ((status || '').toLowerCase()) {
-        case 'pending':      return { color: '#fb8500', bg: 'rgba(251,133,0,0.15)',   border: 'rgba(251,133,0,0.4)' };
-        case 'under review': return { color: '#ffd60a', bg: 'rgba(255,214,10,0.15)',  border: 'rgba(255,214,10,0.4)' };
-        case 'approved':     return { color: '#51cf66', bg: 'rgba(81,207,102,0.15)',  border: 'rgba(81,207,102,0.4)' };
-        case 'rejected':     return { color: '#d62828', bg: 'rgba(214,40,40,0.15)',   border: 'rgba(214,40,40,0.4)' };
-        case 'resolved':     return { color: '#3a86ff', bg: 'rgba(58,134,255,0.15)',  border: 'rgba(58,134,255,0.4)' };
-        default:             return { color: '#fb8500', bg: 'rgba(251,133,0,0.15)',   border: 'rgba(251,133,0,0.4)' };
+        case 'pending': return { color: '#fb8500', bg: 'rgba(251,133,0,0.15)', border: 'rgba(251,133,0,0.4)' };
+        case 'under review': return { color: '#ffd60a', bg: 'rgba(255,214,10,0.15)', border: 'rgba(255,214,10,0.4)' };
+        case 'approved': return { color: '#51cf66', bg: 'rgba(81,207,102,0.15)', border: 'rgba(81,207,102,0.4)' };
+        case 'rejected': return { color: '#d62828', bg: 'rgba(214,40,40,0.15)', border: 'rgba(214,40,40,0.4)' };
+        case 'resolved': return { color: '#3a86ff', bg: 'rgba(58,134,255,0.15)', border: 'rgba(58,134,255,0.4)' };
+        default: return { color: '#fb8500', bg: 'rgba(251,133,0,0.15)', border: 'rgba(251,133,0,0.4)' };
     }
 }
 
@@ -1589,7 +1589,7 @@ function openChallanModal(id) {
                 <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
                     <div style="width:52px;height:52px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 16px rgba(0,212,255,.35);">🚔</div>
                     <div style="flex:1;">
-                        <h2 style="font-size:22px;color:var(--primary-light);font-weight:700;margin-bottom:8px;">Challan Complaint — #CHN-${id.slice(0,6).toUpperCase()}</h2>
+                        <h2 style="font-size:22px;color:var(--primary-light);font-weight:700;margin-bottom:8px;">Challan Complaint — #CHN-${id.slice(0, 6).toUpperCase()}</h2>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;">
                             <span style="background:rgba(0,212,255,.2);color:var(--primary-light);padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid rgba(0,212,255,.3);">${vehicleIcon} ${data.vehicleType || 'Vehicle'}</span>
                             <span style="background:${statusCfg.bg};color:${statusCfg.color};padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid ${statusCfg.border};">${data.status || 'Pending'}</span>
@@ -1635,7 +1635,7 @@ function openChallanModal(id) {
                     <h3 style="font-size:15px;color:var(--primary-light);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📷 Vehicle Images</h3>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                         ${imgBlock(data.vehicleFrontImage, '📷 Front Image')}
-                        ${imgBlock(data.vehicleBackImage,  '📷 Back Image')}
+                        ${imgBlock(data.vehicleBackImage, '📷 Back Image')}
                     </div>
                 </div>
 
@@ -1643,8 +1643,8 @@ function openChallanModal(id) {
                 <div style="margin-bottom:28px;">
                     <h3 style="font-size:15px;color:var(--primary-light);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;">📄 Supporting Documents</h3>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        ${docBlock(data.rcDocumentUrl,      'RC Certificate', '📋')}
-                        ${docBlock(data.aadhaarDocumentUrl, 'Aadhaar Card',   '🪪')}
+                        ${docBlock(data.rcDocumentUrl, 'RC Certificate', '📋')}
+                        ${docBlock(data.aadhaarDocumentUrl, 'Aadhaar Card', '🪪')}
                     </div>
                 </div>
 
@@ -1662,7 +1662,7 @@ function openChallanModal(id) {
                         <div>
                             <label class="form-label" style="margin-bottom:8px;">Update Status</label>
                             <select id="challanModalStatus" class="status-dropdown" style="width:100%;padding:12px;">
-                                ${CHALLAN_STATUSES.map(s => `<option value="${s}" ${s===(data.status||'Pending')?'selected':''}>${s}</option>`).join('')}
+                                ${CHALLAN_STATUSES.map(s => `<option value="${s}" ${s === (data.status || 'Pending') ? 'selected' : ''}>${s}</option>`).join('')}
                             </select>
                         </div>
                         <div style="display:flex;align-items:flex-end;">
@@ -1728,7 +1728,7 @@ function sendChallanResponse(id) {
         adminResponse: msg,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
-        logActivity('challan_response_sent', `Police response sent for challan complaint ${id.slice(0,6).toUpperCase()}`, id);
+        logActivity('challan_response_sent', `Police response sent for challan complaint ${id.slice(0, 6).toUpperCase()}`, id);
         showSuccess('Response sent to user successfully!');
         closeChallanModal();
     }).catch(err => {
@@ -1763,11 +1763,11 @@ function searchChallanComplaints(query) {
     const q = query.toLowerCase();
     const filtered = allChallanData.filter(d =>
         (d.challanNumber || '').toLowerCase().includes(q) ||
-        (d.authorEmail   || '').toLowerCase().includes(q) ||
-        (d.authorName    || '').toLowerCase().includes(q) ||
-        (d.vehicleType   || '').toLowerCase().includes(q) ||
-        (d.status        || '').toLowerCase().includes(q) ||
-        (d.description   || '').toLowerCase().includes(q)
+        (d.authorEmail || '').toLowerCase().includes(q) ||
+        (d.authorName || '').toLowerCase().includes(q) ||
+        (d.vehicleType || '').toLowerCase().includes(q) ||
+        (d.status || '').toLowerCase().includes(q) ||
+        (d.description || '').toLowerCase().includes(q)
     );
 
     list.innerHTML = '';
@@ -1781,7 +1781,7 @@ function searchChallanComplaints(query) {
 // ---- Date Range Filter ----
 function filterChallanByDate() {
     const from = document.getElementById('challanDateFrom')?.value;
-    const to   = document.getElementById('challanDateTo')?.value;
+    const to = document.getElementById('challanDateTo')?.value;
     if (!from && !to) {
         const list = document.getElementById('challanComplaintsList');
         list.innerHTML = '';
@@ -1790,12 +1790,12 @@ function filterChallanByDate() {
     }
 
     const fromDate = from ? new Date(from + 'T00:00:00') : null;
-    const toDate   = to   ? new Date(to   + 'T23:59:59') : null;
+    const toDate = to ? new Date(to + 'T23:59:59') : null;
 
     const filtered = allChallanData.filter(d => {
         const ts = d.createdAt?.toDate ? d.createdAt.toDate() : new Date();
         if (fromDate && ts < fromDate) return false;
-        if (toDate   && ts > toDate)   return false;
+        if (toDate && ts > toDate) return false;
         return true;
     });
 
@@ -1816,22 +1816,22 @@ function exportChallanComplaints() {
     const rows = allChallanData.map(d => {
         const ts = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString() : 'N/A';
         return [
-            `#CHN-${d.id.slice(0,6).toUpperCase()}`,
-            `"${(d.challanNumber || '').replace(/"/g,'""')}"`,
+            `#CHN-${d.id.slice(0, 6).toUpperCase()}`,
+            `"${(d.challanNumber || '').replace(/"/g, '""')}"`,
             d.vehicleType || 'N/A',
-            `"${(d.authorName  || '').replace(/"/g,'""')}"`,
+            `"${(d.authorName || '').replace(/"/g, '""')}"`,
             d.authorEmail || 'N/A',
             d.status || 'Pending',
             ts,
-            `"${(d.description   || '').replace(/"/g,'""').substring(0,200)}"`,
-            `"${(d.adminResponse || '').replace(/"/g,'""')}"`
+            `"${(d.description || '').replace(/"/g, '""').substring(0, 200)}"`,
+            `"${(d.adminResponse || '').replace(/"/g, '""')}"`
         ].join(',');
     });
 
-    const csv  = [headers.join(','), ...rows].join('\n');
+    const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
     a.href = url;
     a.download = `challan_complaints_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();

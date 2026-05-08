@@ -1,11 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Smart Complaint app - Dashboard</title>
   <link rel="stylesheet" href="dashboard.css">
+  <script>
+    // Immediately apply theme to avoid flash
+    (function() {
+      const theme = localStorage.getItem('theme') || 'dark';
+      if (theme === 'light') {
+        document.documentElement.classList.add('light-theme');
+        document.body.classList.add('light-theme');
+      }
+    })();
+
+    function toggleThemeGlobal() {
+      const isLight = document.documentElement.classList.toggle('light-theme');
+      document.body.classList.toggle('light-theme', isLight);
+      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+      updateThemeToggleUI();
+    }
+
+    function updateThemeToggleUI() {
+      const btns = document.querySelectorAll('#themeToggleBtn');
+      const isLight = document.documentElement.classList.contains('light-theme');
+      btns.forEach(btn => {
+        if (btn.classList.contains('floating-theme-toggle')) {
+          btn.innerHTML = isLight ? '☀️' : '🌙';
+        } else {
+          btn.innerHTML = isLight ? '☀️ Light Mode' : '🌙 Dark Mode';
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', updateThemeToggleUI);
+  </script>
 </head>
+
 <body>
   <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Toggle menu" onclick="toggleSidebar()">☰</button>
   <div class="container">
@@ -21,8 +54,10 @@
         <a href="#" class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</a>
         <a href="#" class="nav-item" data-tab="new-complaint" onclick="switchTab('new-complaint')">➕ New Complaint</a>
         <a href="#" class="nav-item" data-tab="my-complaints" onclick="switchTab('my-complaints')">📋 My Complaints</a>
-        <a href="#" class="nav-item" data-tab="challan-complaint" onclick="switchTab('challan-complaint')">🚗 Challan Complaint</a>
-        <a href="#" class="nav-item" data-tab="my-challan-complaints" onclick="switchTab('my-challan-complaints')">🚔 My Challan Reports</a>
+        <a href="#" class="nav-item" data-tab="challan-complaint" onclick="switchTab('challan-complaint')">🚗 Challan
+          Complaint</a>
+        <a href="#" class="nav-item" data-tab="my-challan-complaints" onclick="switchTab('my-challan-complaints')">🚔 My
+          Challan Reports</a>
       </nav>
 
       <nav class="nav-section">
@@ -35,6 +70,7 @@
         <div class="nav-label">Support</div>
         <a href="#" class="nav-item" data-tab="help" onclick="switchTab('help')">❓ Help Center</a>
         <a href="#" class="nav-item" data-tab="settings" onclick="switchTab('settings')">⚙ Settings</a>
+        <a href="#" class="nav-item" id="themeToggleBtn" onclick="toggleThemeGlobal()">🌙 Dark Mode</a>
       </nav>
     </aside>
 
@@ -43,10 +79,11 @@
         <div class="header">
           <div class="header-title">
             <h1 id="welcomeMessage">Welcome 👋</h1>
-            <p>Track all your civic issues with AI-powered assistance</p>
+            <p>Track all your civic issues</p>
           </div>
           <div style="display:flex;gap:12px;flex-wrap:wrap;">
-            <button id="newComplaintBtnTop" class="btn btn-primary" onclick="switchTab('new-complaint')">➕ New Complaint</button>
+            <button id="newComplaintBtnTop" class="btn btn-primary" onclick="switchTab('new-complaint')">➕ New
+              Complaint</button>
             <button id="callNowBtn" class="btn btn-call" onclick="openCallScreen()">📞 Call Now</button>
           </div>
         </div>
@@ -81,7 +118,8 @@
               <div class="location-pulse-dot"></div>
               <span>📍 Your Location</span>
             </div>
-            <button class="location-refresh-btn" onclick="initDashboardLocation()" id="locationRefreshBtn" title="Refresh Location">🔄 Refresh</button>
+            <button class="location-refresh-btn" onclick="initDashboardLocation()" id="locationRefreshBtn"
+              title="Refresh Location">🔄 Refresh</button>
           </div>
 
           <!-- Location Info Row -->
@@ -91,8 +129,8 @@
               <div class="location-coords" id="locationCoords">Requesting GPS access</div>
             </div>
             <div class="location-weather-badge" id="locationWeatherBadge">
-              <span class="location-weather-icon">🌤️</span>
-              <span id="locationWeatherText">--°C</span>
+              <span class="location-weather-icon"></span>
+              <span id="locationWeatherText"></span>
             </div>
           </div>
 
@@ -108,8 +146,7 @@
             <div class="location-manual-label">🔍 Or enter your city / area manually:</div>
             <div class="location-manual-row">
               <input type="text" id="locationManualInput" class="location-manual-input"
-                placeholder="e.g. Mumbai, Pune, Delhi..."
-                onkeydown="if(event.key==='Enter') searchLocationManually()">
+                placeholder="e.g. Mumbai, Pune, Delhi..." onkeydown="if(event.key==='Enter') searchLocationManually()">
               <button class="location-search-btn" onclick="searchLocationManually()" id="locationSearchBtn">
                 Search
               </button>
@@ -160,10 +197,14 @@
           <div class="section-header">
             <div class="section-title">Recent Complaints</div>
             <div class="filters" id="dashboardStatusFilters">
-              <button class="filter-btn active" data-status="all" onclick="setDashboardComplaintFilter('all', this)">All</button>
-              <button class="filter-btn" data-status="pending" onclick="setDashboardComplaintFilter('pending', this)">Pending</button>
-              <button class="filter-btn" data-status="in-progress" onclick="setDashboardComplaintFilter('in-progress', this)">In Progress</button>
-              <button class="filter-btn" data-status="resolved" onclick="setDashboardComplaintFilter('resolved', this)">Resolved</button>
+              <button class="filter-btn active" data-status="all"
+                onclick="setDashboardComplaintFilter('all', this)">All</button>
+              <button class="filter-btn" data-status="pending"
+                onclick="setDashboardComplaintFilter('pending', this)">Pending</button>
+              <button class="filter-btn" data-status="in-progress"
+                onclick="setDashboardComplaintFilter('in-progress', this)">In Progress</button>
+              <button class="filter-btn" data-status="resolved"
+                onclick="setDashboardComplaintFilter('resolved', this)">Resolved</button>
             </div>
           </div>
 
@@ -189,7 +230,7 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Category <span class="required">*</span></label>
-              <select id="category" class="form-select" onchange="handleCategoryChange()"> 
+              <select id="category" class="form-select" onchange="handleCategoryChange()">
                 <option value="">Select Category</option>
                 <option value="Road Damage">Road Damage</option>
                 <option value="Water Supply">Water Supply</option>
@@ -204,13 +245,16 @@
                 <select id="subCategory" class="form-select">
                   <option value="">Select Problem Type</option>
                 </select>
-                <div class="ai-suggestion" style="margin-top:8px;">Select the specific type of problem you're experiencing</div>
+                <div class="ai-suggestion" style="margin-top:8px;">Select the specific type of problem you're
+                  experiencing</div>
               </div>
               <div id="otherCategoryInput" class="form-group" style="display:none; margin-top:12px;">
                 <label class="form-label">Please specify your issue <span class="required">*</span></label>
-                <input id="otherCategoryText" type="text" class="form-input" placeholder="Enter your custom category/issue">
+                <input id="otherCategoryText" type="text" class="form-input"
+                  placeholder="Enter your custom category/issue">
               </div>
-              <div class="ai-suggestion">🤖 AI Tip: Select closest category - we'll auto-refine based on description</div>
+              <div class="ai-suggestion">🤖 AI Tip: Select closest category - we'll auto-refine based on description
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Priority <span class="required">*</span></label>
@@ -227,7 +271,7 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Location of Issue <span class="required">*</span></label>
-              <input id="location" type="text" class="form-input" placeholder="Enter street/area..."> 
+              <input id="location" type="text" class="form-input" placeholder="Enter street/area...">
               <div class="ai-suggestion">📍 Enter the specific location where the issue occurred</div>
             </div>
             <div class="form-group">
@@ -240,11 +284,14 @@
             <div class="form-group" style="width:100%;">
               <label class="form-label">Geolocation (Optional)</label>
               <div style="display:flex; gap:8px; align-items:flex-start;">
-                <button type="button" id="getLocationBtn" class="btn btn-secondary" style="white-space:nowrap; flex-shrink:0;" onclick="getUserLocation()">
+                <button type="button" id="getLocationBtn" class="btn btn-secondary"
+                  style="white-space:nowrap; flex-shrink:0;" onclick="getUserLocation()">
                   📍 Get My Location
                 </button>
                 <div style="flex:1;">
-                  <input id="geolocation" type="text" class="form-input" placeholder="Latitude, Longitude will appear here" readonly style="background:var(--bg-dark); cursor:not-allowed;">
+                  <input id="geolocation" type="text" class="form-input"
+                    placeholder="Latitude, Longitude will appear here" readonly
+                    style="background:var(--bg-dark); cursor:not-allowed;">
                   <div id="locationStatus" class="ai-suggestion" style="display:none; margin-top:4px;"></div>
                 </div>
               </div>
@@ -261,10 +308,12 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Description <span class="required">*</span></label>
-              <textarea id="description" class="form-textarea" placeholder="Describe issue in detail..." oninput="suggestCategoryFromDescription()"></textarea>
+              <textarea id="description" class="form-textarea" placeholder="Describe issue in detail..."
+                oninput="suggestCategoryFromDescription()"></textarea>
               <div class="ai-suggestion" id="categorySuggestion" style="display:none;">
                 🤖 AI Suggestion: <span id="suggestedCategoryText"></span>
-                <button type="button" class="btn-link" onclick="applySuggestedCategory()" style="margin-left:8px; color:var(--primary-light); text-decoration:underline; cursor:pointer;">Apply</button>
+                <button type="button" class="btn-link" onclick="applySuggestedCategory()"
+                  style="margin-left:8px; color:var(--primary-light); text-decoration:underline; cursor:pointer;">Apply</button>
               </div>
               <div class="ai-suggestion">📝 More details = faster resolution</div>
             </div>
@@ -274,19 +323,24 @@
             <div class="form-group" style="width:100%;">
               <label class="form-label">Upload Images & Videos</label>
               <div class="file-upload-container">
-                <input type="file" id="mediaUpload" multiple accept="image/*,video/*" style="display:none;" onchange="handleMediaUpload(event)">
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('mediaUpload').click()" style="width:100%;">
+                <input type="file" id="mediaUpload" multiple accept="image/*,video/*" style="display:none;"
+                  onchange="handleMediaUpload(event)">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('mediaUpload').click()"
+                  style="width:100%;">
                   📸📹 Choose Images/Videos
                 </button>
-                <button type="button" id="clearMediaBtn" class="btn btn-secondary" onclick="clearAllMediaUploads()" style="width:100%; margin-top:8px; display:none;">🗑️ Clear All Uploads</button>
+                <button type="button" id="clearMediaBtn" class="btn btn-secondary" onclick="clearAllMediaUploads()"
+                  style="width:100%; margin-top:8px; display:none;">🗑️ Clear All Uploads</button>
                 <div id="mediaPreview" class="media-preview-grid" style="display:none; margin-top:16px;"></div>
-                <div class="ai-suggestion" style="margin-top:8px;">You can upload multiple images and videos to help describe your issue</div>
+                <div class="ai-suggestion" style="margin-top:8px;">You can upload multiple images and videos to help
+                  describe your issue</div>
               </div>
             </div>
           </div>
 
           <div class="form-row" style="gap:12px;">
-            <button id="submitComplaintBtn" class="btn btn-primary" onclick="handleComplaintSubmit()">✅ Submit Complaint</button>
+            <button id="submitComplaintBtn" class="btn btn-primary" onclick="handleComplaintSubmit()">✅ Submit
+              Complaint</button>
             <button id="cancelComplaintBtn" class="btn btn-secondary" onclick="switchTab('dashboard')">❌ Cancel</button>
           </div>
         </div>
@@ -294,7 +348,7 @@
         <!-- Feature list removed as requested -->
       </div>
 
-        <div id="my-complaints" class="tab-content" style="display:none;" data-tab-name="my-complaints">
+      <div id="my-complaints" class="tab-content" style="display:none;" data-tab-name="my-complaints">
         <div class="header">
           <div class="header-title">
             <h1>My Complaints</h1>
@@ -339,16 +393,20 @@
               <button class="suggested-question-btn" onclick="sendSuggestedMessage('How do I file a complaint?')">
                 📋 How do I file a complaint?
               </button>
-              <button class="suggested-question-btn" onclick="sendSuggestedMessage('What is the status of my complaints?')">
+              <button class="suggested-question-btn"
+                onclick="sendSuggestedMessage('What is the status of my complaints?')">
                 📊 What is the status of my complaints?
               </button>
-              <button class="suggested-question-btn" onclick="sendSuggestedMessage('How long does it take to resolve a complaint?')">
+              <button class="suggested-question-btn"
+                onclick="sendSuggestedMessage('How long does it take to resolve a complaint?')">
                 ⏱️ How long does resolution take?
               </button>
-              <button class="suggested-question-btn" onclick="sendSuggestedMessage('What categories of complaints can I report?')">
+              <button class="suggested-question-btn"
+                onclick="sendSuggestedMessage('What categories of complaints can I report?')">
                 📂 What categories are available?
               </button>
-              <button class="suggested-question-btn" onclick="sendSuggestedMessage('Help me understand priority levels')">
+              <button class="suggested-question-btn"
+                onclick="sendSuggestedMessage('Help me understand priority levels')">
                 🎯 Explain priority levels
               </button>
               <button class="suggested-question-btn" onclick="sendSuggestedMessage('How can I track my complaint?')">
@@ -371,7 +429,8 @@
                   <li>Answering questions about civic issues</li>
                   <li>Suggesting categories and priorities</li>
                 </ul>
-                <p style="margin-top:16px; color:var(--text-secondary); font-size:13px;">Click on a suggested question above or type your message below to get started!</p>
+                <p style="margin-top:16px; color:var(--text-secondary); font-size:13px;">Click on a suggested question
+                  above or type your message below to get started!</p>
               </div>
             </div>
           </div>
@@ -392,21 +451,18 @@
               <button id="micBtn" class="chat-mic-btn" onclick="toggleVoiceRecording()" title="Voice Input">
                 <span id="micIcon">🎤</span>
               </button>
-              <textarea 
-                id="chatInput" 
-                class="chat-input" 
-                placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)"
-                rows="1"
-                onkeydown="handleChatInputKeydown(event)"
-                oninput="autoResizeChatInput(this)"
-              ></textarea>
+              <textarea id="chatInput" class="chat-input"
+                placeholder="Type your message here... (Press Enter to send, Shift+Enter for new line)" rows="1"
+                onkeydown="handleChatInputKeydown(event)" oninput="autoResizeChatInput(this)"></textarea>
               <button id="sendChatBtn" class="chat-send-btn" onclick="sendChatMessage()">
                 <span class="send-icon">📤</span>
               </button>
             </div>
             <div class="chat-input-footer">
-              <span id="recordingStatus" style="color:var(--danger); font-size:12px; display:none;">🔴 Recording... Click again to stop</span>
-              <span style="color:var(--text-secondary); font-size:12px;">💡 Tip: Ask me anything about complaints, categories, or civic issues</span>
+              <span id="recordingStatus" style="color:var(--danger); font-size:12px; display:none;">🔴 Recording...
+                Click again to stop</span>
+              <span style="color:var(--text-secondary); font-size:12px;">💡 Tip: Ask me anything about complaints,
+                categories, or civic issues</span>
             </div>
           </div>
         </div>
@@ -449,7 +505,9 @@
           <div class="challan-info-icon">🛡️</div>
           <div>
             <div style="font-weight:700;color:var(--primary-light);margin-bottom:4px;">How it works</div>
-            <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Fill in your challan/vehicle details, upload supporting documents, and describe your issue. A unique Complaint ID will be generated. The police department will review and respond within 5–7 working days.</div>
+            <div style="font-size:13px;color:var(--text-secondary);line-height:1.6;">Fill in your challan/vehicle
+              details, upload supporting documents, and describe your issue. A unique Complaint ID will be generated.
+              The police department will review and respond within 5–7 working days.</div>
           </div>
         </div>
 
@@ -459,7 +517,8 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="challanNumber">Challan Number <span class="required">*</span></label>
-              <input id="challanNumber" type="text" class="form-input" placeholder="e.g. CHN-2024-00123" style="text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">
+              <input id="challanNumber" type="text" class="form-input" placeholder="e.g. CHN-2024-00123"
+                style="text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">
             </div>
             <div class="form-group">
               <label class="form-label" for="challanDate">Date of Issue</label>
@@ -479,7 +538,8 @@
           <div class="form-row">
             <div class="form-group" style="width:100%;">
               <label class="form-label" for="challanViolation">Violation Mentioned on Challan</label>
-              <input id="challanViolation" type="text" class="form-input" placeholder="e.g. Red Light Jump, Over Speeding">
+              <input id="challanViolation" type="text" class="form-input"
+                placeholder="e.g. Red Light Jump, Over Speeding">
             </div>
           </div>
 
@@ -487,8 +547,10 @@
           <div class="form-title" style="margin-top:24px;">2. Vehicle Information</div>
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="vehicleRegNumber">Registration Number <span class="required">*</span></label>
-              <input id="vehicleRegNumber" type="text" class="form-input" placeholder="e.g. MH12AB1234" style="text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">
+              <label class="form-label" for="vehicleRegNumber">Registration Number <span
+                  class="required">*</span></label>
+              <input id="vehicleRegNumber" type="text" class="form-input" placeholder="e.g. MH12AB1234"
+                style="text-transform:uppercase;letter-spacing:1px;" oninput="this.value=this.value.toUpperCase()">
             </div>
             <div class="form-group">
               <label class="form-label" for="vehicleOwner">Owner Name (as per RC)</label>
@@ -550,15 +612,18 @@
             <div class="form-group">
               <label class="form-label">Your Location at the Time of Incident</label>
               <div style="display:flex; gap:8px;">
-                <button type="button" class="btn btn-secondary" onclick="getChallanLocation()" style="white-space:nowrap;">📍 Fetch</button>
+                <button type="button" class="btn btn-secondary" onclick="getChallanLocation()"
+                  style="white-space:nowrap;">📍 Fetch</button>
                 <input id="incidentLocation" type="text" class="form-input" placeholder="Manual input or auto-fetch">
               </div>
             </div>
           </div>
           <div class="form-row">
             <div class="form-group" style="width:100%;">
-              <label class="form-label" for="challanDescription">Detailed Description of the Dispute <span class="required">*</span></label>
-              <textarea id="challanDescription" class="form-textarea" rows="4" placeholder="Describe the issue clearly..." style="min-height:100px;"></textarea>
+              <label class="form-label" for="challanDescription">Detailed Description of the Dispute <span
+                  class="required">*</span></label>
+              <textarea id="challanDescription" class="form-textarea" rows="4"
+                placeholder="Describe the issue clearly..." style="min-height:100px;"></textarea>
             </div>
           </div>
 
@@ -568,16 +633,22 @@
             <div class="form-group" style="width:100%;">
               <label class="form-label">Evidence Type (Select all that apply):</label>
               <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px;" id="evidenceTypeContainer">
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="RC Book Copy"> RC Book Copy</label>
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Payment Proof"> Payment Proof</label>
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Front Image of Vehicle"> Front Image</label>
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Back Image of Vehicle"> Back Image</label>
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Aadhaar Card"> Aadhaar Card</label>
-                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType" value="Vehicle Type Proof"> Vehicle Type Proof</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType"
+                    value="RC Book Copy"> RC Book Copy</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType"
+                    value="Payment Proof"> Payment Proof</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType"
+                    value="Front Image of Vehicle"> Front Image</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType"
+                    value="Back Image of Vehicle"> Back Image</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType"
+                    value="Aadhaar Card"> Aadhaar Card</label>
+                <label style="display:flex; align-items:center; gap:6px;"><input type="checkbox" name="evidenceType"
+                    value="Vehicle Type Proof"> Vehicle Type Proof</label>
               </div>
             </div>
           </div>
-          
+
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Front Image of Vehicle <span class="required">*</span></label>
@@ -607,8 +678,10 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label">RC / Other Documents <span style="color:var(--text-secondary);font-size:12px;">(Optional)</span></label>
-              <div class="challan-upload-zone challan-doc-zone" onclick="document.getElementById('challanRcInput').click()">
+              <label class="form-label">RC / Other Documents <span
+                  style="color:var(--text-secondary);font-size:12px;">(Optional)</span></label>
+              <div class="challan-upload-zone challan-doc-zone"
+                onclick="document.getElementById('challanRcInput').click()">
                 <input type="file" id="challanRcInput" accept="image/*,application/pdf" style="display:none;">
                 <div class="challan-upload-placeholder">
                   <div style="font-size:32px;margin-bottom:8px;">📋</div>
@@ -619,8 +692,10 @@
               </div>
             </div>
             <div class="form-group">
-              <label class="form-label">Aadhaar Card <span style="color:var(--text-secondary);font-size:12px;">(Optional)</span></label>
-              <div class="challan-upload-zone challan-doc-zone" onclick="document.getElementById('challanAadhaarInput').click()">
+              <label class="form-label">Aadhaar Card <span
+                  style="color:var(--text-secondary);font-size:12px;">(Optional)</span></label>
+              <div class="challan-upload-zone challan-doc-zone"
+                onclick="document.getElementById('challanAadhaarInput').click()">
                 <input type="file" id="challanAadhaarInput" accept="image/*,application/pdf" style="display:none;">
                 <div class="challan-upload-placeholder">
                   <div style="font-size:32px;margin-bottom:8px;">🪪</div>
@@ -664,7 +739,8 @@
 
           <!-- Submit -->
           <div class="form-row" style="gap:12px; margin-top:24px;">
-            <button id="challanSubmitBtn" class="btn btn-primary" onclick="handleChallanSubmit()" style="flex:1;">✅ Submit Challan Complaint</button>
+            <button id="challanSubmitBtn" class="btn btn-primary" onclick="handleChallanSubmit()" style="flex:1;">✅
+              Submit Challan Complaint</button>
             <button class="btn btn-secondary" onclick="resetChallanForm()">🔄 Reset Form</button>
           </div>
         </div>
@@ -677,11 +753,14 @@
             <h1>🚔 My Challan Reports</h1>
             <p>Track all your submitted challan complaints and police responses</p>
           </div>
-          <button class="btn btn-primary" onclick="switchTab('challan-complaint', document.querySelector('[data-tab=challan-complaint]'))">➕ New Challan Complaint</button>
+          <button class="btn btn-primary"
+            onclick="switchTab('challan-complaint', document.querySelector('[data-tab=challan-complaint]'))">➕ New
+            Challan Complaint</button>
         </div>
         <div class="complaints-section">
           <div id="myChallanList" style="min-height:120px;">
-            <p style="text-align:center;color:var(--text-secondary);padding:40px 20px;">Loading your challan complaints…</p>
+            <p style="text-align:center;color:var(--text-secondary);padding:40px 20px;">Loading your challan complaints…
+            </p>
           </div>
         </div>
       </div>
@@ -702,10 +781,13 @@
     <div id="callNameModal" class="call-modal" style="display:none;">
       <div class="call-modal-content">
         <h2 style="margin-bottom:20px;">Welcome to Smart Public Complaint System</h2>
-        <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px;">Please enter your name to start the call. You'll be asked to choose a language during the call.</p>
+        <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px;">Please enter your name to start the
+          call. You'll be asked to choose a language during the call.</p>
         <div style="margin-bottom:24px;">
-          <label style="display:block; font-size:14px; margin-bottom:8px; color:var(--text-secondary);">Your Full Name</label>
-          <input type="text" id="callUserName" class="call-modal-input" placeholder="Enter your full name" style="font-size:14px;">
+          <label style="display:block; font-size:14px; margin-bottom:8px; color:var(--text-secondary);">Your Full
+            Name</label>
+          <input type="text" id="callUserName" class="call-modal-input" placeholder="Enter your full name"
+            style="font-size:14px;">
         </div>
         <button class="call-modal-btn" onclick="callStartConversation()">📞 Start Call</button>
       </div>
@@ -772,4 +854,5 @@
   <script src="challan.js"></script>
   <script src="call.js"></script>
 </body>
+
 </html>

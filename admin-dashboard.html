@@ -1,228 +1,262 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Smart complaint app - Admin Dashboard</title>
 
     <!-- Main Dashboard CSS -->
     <link rel="stylesheet" href="dashboard.css">
+    <script>
+        // Immediately apply theme to avoid flash
+        (function() {
+          const theme = localStorage.getItem('theme') || 'dark';
+          if (theme === 'light') {
+            document.documentElement.classList.add('light-theme');
+            document.body.classList.add('light-theme');
+          }
+        })();
+
+        function toggleThemeGlobal() {
+          const isLight = document.documentElement.classList.toggle('light-theme');
+          document.body.classList.toggle('light-theme', isLight);
+          localStorage.setItem('theme', isLight ? 'light' : 'dark');
+          updateThemeToggleUI();
+        }
+
+        function updateThemeToggleUI() {
+          const btns = document.querySelectorAll('#themeToggleBtn');
+          const isLight = document.documentElement.classList.contains('light-theme');
+          btns.forEach(btn => {
+            if (btn.classList.contains('floating-theme-toggle')) {
+              btn.innerHTML = isLight ? '☀️' : '🌙';
+            } else {
+              btn.innerHTML = isLight ? '☀️ Light Mode' : '🌙 Dark Mode';
+            }
+          });
+        }
+
+        document.addEventListener('DOMContentLoaded', updateThemeToggleUI);
+    </script>
 </head>
+
 <body>
 
-<button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Toggle menu" onclick="toggleSidebar()">☰</button>
-<div class="container">
+    <button id="mobileMenuBtn" class="mobile-menu-btn" aria-label="Toggle menu" onclick="toggleSidebar()">☰</button>
+    <div class="container">
 
-    <!-- ================= SIDEBAR ================= -->
-    <aside class="sidebar">
-        <button class="sidebar-close-btn" aria-label="Close menu" onclick="toggleSidebar()">✕</button>
-        <div class="logo">
-            <div class="logo-icon">⚡</div>
-            <span>Smart complaint Admin</span>
-        </div>
-
-        <nav class="nav-section">
-            <div class="nav-label">Admin Panel</div>
-
-            <a href="#" class="nav-item active"
-               data-tab="overview"
-               onclick="switchAdminTab('overview', this)">
-                ✨ Overview
-            </a>
-
-            <a href="#" class="nav-item"
-               data-tab="all-complaints"
-               onclick="switchAdminTab('all-complaints', this)">
-                📋 All Complaints
-            </a>
-        </nav>
-
-        <nav class="nav-section">
-            <div class="nav-label">Settings</div>
-
-            <a href="#" class="nav-item"
-               data-tab="reports"
-               onclick="switchAdminTab('reports', this)">
-                📈 Reports
-            </a>
-
-            <a href="#" class="nav-item"
-               data-tab="settings"
-               onclick="switchAdminTab('settings', this)">
-                ⚙ Settings
-            </a>
-
-            <a href="#" class="nav-item logout-btn"
-               onclick="adminLogout()">
-                🔒 Logout
-            </a>
-        </nav>
-    </aside>
-
-    <!-- ================= MAIN CONTENT ================= -->
-    <main class="main">
-
-        <!-- ========== OVERVIEW TAB ========== -->
-        <div id="overview" class="tab-content">
-
-            <div class="header">
-                <div class="header-title">
-                    <h1>Admin Overview 👋</h1>
-                    <p>Real-time system health and complaint statistics.</p>
-                </div>
+        <!-- ================= SIDEBAR ================= -->
+        <aside class="sidebar">
+            <button class="sidebar-close-btn" aria-label="Close menu" onclick="toggleSidebar()">✕</button>
+            <div class="logo">
+                <div class="logo-icon">⚡</div>
+                <span>Smart complaint Admin</span>
             </div>
 
-            <!-- 🔥 REQUIRED FOR admin.js -->
-            <div id="adminStatsGrid" class="stats-grid">
-                <p style="text-align:center; padding:40px;">
-                    Loading statistics...
-                </p>
-            </div>
+            <nav class="nav-section">
+                <div class="nav-label">Admin Panel</div>
 
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:24px; margin-top:40px;">
-                <div class="complaints-section">
-                    <div class="section-title">⚡ Quick Actions</div>
-                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-top:20px;">
-                        <button class="btn btn-primary" onclick="switchAdminTab('all-complaints', document.querySelector('[data-tab=\'all-complaints\']'))" style="padding:16px; font-size:14px;">
-                            📋 View All
-                        </button>
-                        <button class="btn btn-secondary" onclick="switchAdminTab('reports', document.querySelector('[data-tab=\'reports\']'))" style="padding:16px; font-size:14px;">
-                            📈 Reports
-                        </button>
-                        <button class="btn btn-secondary" onclick="exportAllComplaints()" style="padding:16px; font-size:14px;">
-                            📥 Export
-                        </button>
-                        <button class="btn btn-secondary" onclick="refreshDashboard()" style="padding:16px; font-size:14px;">
-                            🔄 Refresh
-                        </button>
-                    </div>
-                </div>
+                <a href="#" class="nav-item active" data-tab="overview" onclick="switchAdminTab('overview', this)">
+                    ✨ Overview
+                </a>
 
-                <div class="complaints-section">
-                    <div class="section-title">📊 Performance Metrics</div>
-                    <div id="performanceMetrics" style="margin-top:20px;">
-                        <p style="color:var(--text-secondary);">Loading metrics...</p>
-                    </div>
-                </div>
-            </div>
+                <a href="#" class="nav-item" data-tab="all-complaints" onclick="switchAdminTab('all-complaints', this)">
+                    📋 All Complaints
+                </a>
+            </nav>
 
-            <div class="complaints-section" style="margin-top:40px;">
-                <div class="section-title">📋 System Activity Log</div>
+            <nav class="nav-section">
+                <div class="nav-label">Settings</div>
 
-                <div id="activityLog">
-                    <p style="color:var(--text-secondary); padding:20px;">
-                        Loading recent activities...
-                    </p>
-                </div>
-            </div>
-        </div>
+                <a href="#" class="nav-item" data-tab="reports" onclick="switchAdminTab('reports', this)">
+                    📈 Reports
+                </a>
 
-        <!-- ========== ALL COMPLAINTS TAB ========== -->
-        <div id="all-complaints" class="tab-content" style="display:none;">
+                <a href="#" class="nav-item" data-tab="settings" onclick="switchAdminTab('settings', this)">
+                    ⚙ Settings
+                </a>
 
-            <div class="header">
-                <div class="header-title">
-                    <h1>All User Complaints</h1>
-                    <p>Manage and update status for all reported issues.</p>
-                </div>
-            </div>
+                <a href="#" class="nav-item" id="themeToggleBtn" onclick="toggleThemeGlobal()">
+                    🌙 Dark Mode
+                </a>
 
-            <div class="complaints-section">
+                <a href="#" class="nav-item logout-btn" onclick="adminLogout()">
+                    🔒 Logout
+                </a>
+            </nav>
+        </aside>
 
-                <div class="section-header">
-                    <div class="section-title">Filter Complaints</div>
+        <!-- ================= MAIN CONTENT ================= -->
+        <main class="main">
 
-                    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-                        <div class="filters">
-                            <button class="filter-btn active"
-                                    onclick="filterAdminComplaints('all', this)">
-                                All
-                            </button>
+            <!-- ========== OVERVIEW TAB ========== -->
+            <div id="overview" class="tab-content">
 
-                            <button class="filter-btn"
-                                    onclick="filterAdminComplaints('pending', this)">
-                                Pending
-                            </button>
-
-                            <button class="filter-btn"
-                                    onclick="filterAdminComplaints('in-progress', this)">
-                                In Progress
-                            </button>
-
-                            <button class="filter-btn"
-                                    onclick="filterAdminComplaints('resolved', this)">
-                                Resolved
-                            </button>
-
-                            <button class="filter-btn"
-                                    onclick="filterAdminComplaints('rejected', this)">
-                                Rejected
-                            </button>
-                        </div>
-                        
-                        <div style="flex:1; max-width:300px;">
-                            <input type="text" id="complaintSearch" class="form-input" placeholder="🔍 Search complaints..." oninput="searchComplaints(this.value)" style="width:100%;">
-                        </div>
+                <div class="header">
+                    <div class="header-title">
+                        <h1>Admin Overview 👋</h1>
+                        <p>Real-time system health and complaint statistics.</p>
                     </div>
                 </div>
 
                 <!-- 🔥 REQUIRED FOR admin.js -->
-                <div id="allComplaintsList">
-                    <p style="text-align:center; color:var(--text-secondary); padding:40px;">
-                        Loading all user complaints…
+                <div id="adminStatsGrid" class="stats-grid">
+                    <p style="text-align:center; padding:40px;">
+                        Loading statistics...
                     </p>
                 </div>
 
-            </div>
-        </div>
+                <div
+                    style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:24px; margin-top:40px;">
+                    <div class="complaints-section">
+                        <div class="section-title">⚡ Quick Actions</div>
+                        <div
+                            style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-top:20px;">
+                            <button class="btn btn-primary"
+                                onclick="switchAdminTab('all-complaints', document.querySelector('[data-tab=\'all-complaints\']'))"
+                                style="padding:16px; font-size:14px;">
+                                📋 View All
+                            </button>
+                            <button class="btn btn-secondary"
+                                onclick="switchAdminTab('reports', document.querySelector('[data-tab=\'reports\']'))"
+                                style="padding:16px; font-size:14px;">
+                                📈 Reports
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportAllComplaints()"
+                                style="padding:16px; font-size:14px;">
+                                📥 Export
+                            </button>
+                            <button class="btn btn-secondary" onclick="refreshDashboard()"
+                                style="padding:16px; font-size:14px;">
+                                🔄 Refresh
+                            </button>
+                        </div>
+                    </div>
 
-        <!-- ========== REPORTS TAB ========== -->
-        <div id="reports" class="tab-content" style="display:none;">
-            <div class="header">
-                <div class="header-title">
-                    <h1>📈 Reports & Analytics</h1>
-                    <p>Comprehensive insights and statistics for complaint management</p>
+                    <div class="complaints-section">
+                        <div class="section-title">📊 Performance Metrics</div>
+                        <div id="performanceMetrics" style="margin-top:20px;">
+                            <p style="color:var(--text-secondary);">Loading metrics...</p>
+                        </div>
+                    </div>
                 </div>
-                <button class="btn btn-primary" onclick="exportReport()">📥 Export Report</button>
-            </div>
 
-            <div id="reportsContent">
-                <div style="text-align:center; padding:60px 20px;">
-                    <p>Loading reports...</p>
-                </div>
-            </div>
-        </div>
+                <div class="complaints-section" style="margin-top:40px;">
+                    <div class="section-title">📋 System Activity Log</div>
 
-        <!-- ========== SETTINGS TAB ========== -->
-        <div id="settings" class="tab-content" style="display:none;">
-            <div class="header">
-                <div class="header-title">
-                    <h1>⚙ Admin Settings</h1>
-                    <p>Manage your profile and system configuration</p>
+                    <div id="activityLog">
+                        <p style="color:var(--text-secondary); padding:20px;">
+                            Loading recent activities...
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <div id="settingsContent">
-                <div style="text-align:center; padding:60px 20px;">
-                    <p>Loading settings...</p>
+            <!-- ========== ALL COMPLAINTS TAB ========== -->
+            <div id="all-complaints" class="tab-content" style="display:none;">
+
+                <div class="header">
+                    <div class="header-title">
+                        <h1>All User Complaints</h1>
+                        <p>Manage and update status for all reported issues.</p>
+                    </div>
+                </div>
+
+                <div class="complaints-section">
+
+                    <div class="section-header">
+                        <div class="section-title">Filter Complaints</div>
+
+                        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                            <div class="filters">
+                                <button class="filter-btn active" onclick="filterAdminComplaints('all', this)">
+                                    All
+                                </button>
+
+                                <button class="filter-btn" onclick="filterAdminComplaints('pending', this)">
+                                    Pending
+                                </button>
+
+                                <button class="filter-btn" onclick="filterAdminComplaints('in-progress', this)">
+                                    In Progress
+                                </button>
+
+                                <button class="filter-btn" onclick="filterAdminComplaints('resolved', this)">
+                                    Resolved
+                                </button>
+
+                                <button class="filter-btn" onclick="filterAdminComplaints('rejected', this)">
+                                    Rejected
+                                </button>
+                            </div>
+
+                            <div style="flex:1; max-width:300px;">
+                                <input type="text" id="complaintSearch" class="form-input"
+                                    placeholder="🔍 Search complaints..." oninput="searchComplaints(this.value)"
+                                    style="width:100%;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 🔥 REQUIRED FOR admin.js -->
+                    <div id="allComplaintsList">
+                        <p style="text-align:center; color:var(--text-secondary); padding:40px;">
+                            Loading all user complaints…
+                        </p>
+                    </div>
+
                 </div>
             </div>
-        </div>
 
-    </main>
-</div>
+            <!-- ========== REPORTS TAB ========== -->
+            <div id="reports" class="tab-content" style="display:none;">
+                <div class="header">
+                    <div class="header-title">
+                        <h1>📈 Reports & Analytics</h1>
+                        <p>Comprehensive insights and statistics for complaint management</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="exportReport()">📥 Export Report</button>
+                </div>
 
-<!-- ================= FIREBASE ================= -->
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+                <div id="reportsContent">
+                    <div style="text-align:center; padding:60px 20px;">
+                        <p>Loading reports...</p>
+                    </div>
+                </div>
+            </div>
 
-<!-- Firebase Init -->
-<script src="firebase-init.js"></script>
+            <!-- ========== SETTINGS TAB ========== -->
+            <div id="settings" class="tab-content" style="display:none;">
+                <div class="header">
+                    <div class="header-title">
+                        <h1>⚙ Admin Settings</h1>
+                        <p>Manage your profile and system configuration</p>
+                    </div>
+                </div>
 
-<!-- Admin Logic -->
-<script src="admin.js"></script>
+                <div id="settingsContent">
+                    <div style="text-align:center; padding:60px 20px;">
+                        <p>Loading settings...</p>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ================= FIREBASE ================= -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+
+    <!-- Firebase Init -->
+    <script src="firebase-init.js"></script>
+
+    <!-- Admin Logic -->
+    <script src="admin.js"></script>
 
 </body>
+
 </html>
