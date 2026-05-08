@@ -198,8 +198,9 @@ function createComplaintElement(id, data) {
             <div class="complaint-desc">${data.description || ''}</div>
             ${mediaHTML}
             ${rejectionHTML}
-            <div class="complaint-meta" style="margin-top:8px;">
-                📍 ${data.location || 'N/A'} &nbsp;·&nbsp; 🕒 ${timeAgo(ts)}
+            <div class="complaint-meta" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+                <span>📍 ${data.location || 'N/A'} &nbsp;·&nbsp; 🕒 ${timeAgo(ts)}</span>
+                <button class="tracking-btn" onclick="openTrackingModal('${id}')" style="margin-top:-4px;">🚚 Track Complaint</button>
             </div>
         </div>
     `;
@@ -1235,7 +1236,16 @@ async function handleComplaintSubmit(e) {
         progress: 0,
         authorId: currentUser.uid,
         authorEmail: currentUser.email,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        statusHistory: [
+            {
+                status: 'pending',
+                title: 'Complaint Submitted',
+                desc: 'Your complaint has been successfully registered in the system.',
+                timestamp: new Date(),
+                updatedBy: currentUser.email
+            }
+        ]
     };
 
     // Add media URLs if any
@@ -2563,3 +2573,7 @@ function _escHtml(text) {
     d.textContent = String(text || '');
     return d.innerHTML;
 }
+
+// ===============================
+// Tracking Timeline Logic
+// ===============================

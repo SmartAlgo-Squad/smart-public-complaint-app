@@ -3453,3 +3453,124 @@ body {
     font-size: 22px;
   }
 }
+
+/* ---- TRACKING TIMELINE ---- */
+.tracking-modal-content {
+  background: linear-gradient(135deg, #0d1033, rgba(0, 212, 255, 0.04));
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+  padding: 0;
+}
+.tracking-modal-header {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(131, 56, 236, 0.1));
+  padding: 24px 32px;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 22px 22px 0 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+}
+.tracking-timeline {
+  padding: 32px;
+  position: relative;
+}
+.tracking-timeline::before {
+  content: '';
+  position: absolute;
+  top: 32px;
+  bottom: 32px;
+  left: 48px;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 1;
+}
+.tracking-step {
+  display: flex;
+  gap: 24px;
+  position: relative;
+  z-index: 2;
+  margin-bottom: 32px;
+}
+.tracking-step:last-child {
+  margin-bottom: 0;
+}
+.tracking-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-dark);
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.tracking-step.completed .tracking-icon {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 15px rgba(0, 212, 255, 0.4);
+}
+.tracking-step.current .tracking-icon {
+  border-color: var(--warning);
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+.tracking-info {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  padding: 16px;
+  border-radius: 12px;
+}
+.tracking-step.completed .tracking-info {
+  background: rgba(0, 212, 255, 0.05);
+  border-color: rgba(0, 212, 255, 0.2);
+}
+.tracking-step.current .tracking-info {
+  background: rgba(245, 158, 11, 0.05);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.tracking-title {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+.tracking-step.completed .tracking-title {
+  color: var(--primary-light);
+}
+.tracking-step.current .tracking-title {
+  color: var(--warning);
+}
+.tracking-date {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+.tracking-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.tracking-btn {
+  background: rgba(0, 212, 255, 0.1);
+  color: var(--primary-light);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.tracking-btn:hover {
+  background: rgba(0, 212, 255, 0.2);
+}

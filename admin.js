@@ -305,6 +305,9 @@ function createAdminComplaintElement(id, data) {
             <button class="btn btn-primary" style="padding:8px 12px; font-size:12px;" onclick="event.stopPropagation(); openComplaintModal('${id}', ${JSON.stringify(data).replace(/"/g, '&quot;')})">
                 View Details
             </button>
+            <button class="btn tracking-btn" style="padding:8px 12px; font-size:12px; background:rgba(0, 212, 255, 0.1); border:1px solid rgba(0, 212, 255, 0.3); color:var(--primary-light); cursor:pointer;" onclick="event.stopPropagation(); openTrackingModal('${id}')">
+                📦 View Timeline
+            </button>
         </div>
     `;
     return el;
@@ -476,7 +479,15 @@ function assignComplaint(id) {
 
     firebaseDB.collection('complaints').doc(id).update({
         assignedTo: email,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        assigneeTo: email,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        statusHistory: firebase.firestore.FieldValue.arrayUnion({
+            status: 'under review',
+            title: 'Complaint Assigned',
+            desc: `Complaint has been assigned to: ${email}`,
+            timestamp: new Date(),
+            updatedBy: currentAdminUser?.email || 'Admin'
+        })
     }).then(() => {
         logActivity('complaint_assigned', `Complaint assigned to ${email}`, id);
         showSuccess('Complaint assigned successfully');
@@ -490,8 +501,16 @@ function acceptComplaint(id) {
 
     firebaseDB.collection('complaints').doc(id).update({
         status: 'in-progress',
-        assignedTo: currentAdminUser.email,
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        assignedTo: currentAdminUser?.email || 'admin',
+        assigneeTo: currentAdminUser?.email || 'admin',
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        statusHistory: firebase.firestore.FieldValue.arrayUnion({
+            status: 'in-progress',
+            title: 'Complaint Accepted',
+            desc: `Complaint accepted and marked in-progress by ${currentAdminUser?.email || 'Admin'}.`,
+            timestamp: new Date(),
+            updatedBy: currentAdminUser?.email || 'Admin'
+        })
     }).then(() => {
         logActivity('complaint_accepted', 'Complaint accepted and set to in-progress', id);
         showSuccess('Complaint accepted');
@@ -520,7 +539,14 @@ function rejectComplaint(id) {
     firebaseDB.collection('complaints').doc(id).update({
         status: 'rejected',
         rejectionReason: reason || 'No reason provided',
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        statusHistory: firebase.firestore.FieldValue.arrayUnion({
+            status: 'rejected',
+            title: 'Complaint Rejected',
+            desc: `Rejected: ${reason || 'No reason provided'}`,
+            timestamp: new Date(),
+            updatedBy: currentAdminUser?.email || 'Admin'
+        })
     }).then(() => {
         logActivity('complaint_rejected', `Complaint rejected${reason ? ': ' + reason : ''}`, id);
         showSuccess('Complaint rejected');
@@ -616,7 +642,14 @@ function updateComplaintStatus(id, status) {
         .doc(id)
         .update({
             status,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            statusHistory: firebase.firestore.FieldValue.arrayUnion({
+                status: status,
+                title: `Status Updated`,
+                desc: `Status updated to "${status}" by Admin.`,
+                timestamp: new Date(),
+                updatedBy: currentAdminUser?.email || 'Admin'
+            })
         })
         .then(() => {
             logActivity('status_updated', `Complaint status updated to ${status}`, id);
@@ -1838,3 +1871,4 @@ function exportChallanComplaints() {
     URL.revokeObjectURL(url);
     showSuccess('Challan complaints exported successfully!');
 }
+

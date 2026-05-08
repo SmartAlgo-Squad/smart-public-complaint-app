@@ -125,6 +125,9 @@ function renderChallanComplaintCard(id, data) {
             </div>
             ${adminReplyHTML}
             ${rejectionReasonHTML}
+            <div style="margin-top:16px;border-top:1px solid var(--border-color);padding-top:12px;display:flex;justify-content:flex-end;">
+                <button class="tracking-btn" onclick="openTrackingModal('${id}', true)">🚚 Track Complaint</button>
+            </div>
         </div>
     `;
     return wrapper;
@@ -389,6 +392,15 @@ async function handleChallanSubmit() {
             authorName,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            statusHistory: [
+                {
+                    status: 'Pending',
+                    title: 'Complaint Submitted',
+                    desc: 'Your challan complaint has been successfully registered and routed to the Police Department.',
+                    timestamp: new Date(),
+                    updatedBy: challanEmail || currentUser.email || 'Citizen'
+                }
+            ]
         };
 
         // Primary write (used by user/admin/police views)

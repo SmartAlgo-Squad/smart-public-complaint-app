@@ -519,6 +519,9 @@ function buildChallanRow(id, data, compact) {
                 onclick="event.stopPropagation(); openPoliceModal('${id}')">
                 🔍 View Details
             </button>
+            <button class="btn tracking-btn" style="padding:8px 12px; font-size:12px; background:rgba(0, 212, 255, 0.1); border:1px solid rgba(0, 212, 255, 0.3); color:var(--primary-light); cursor:pointer;" onclick="event.stopPropagation(); openTrackingModal('${id}', true)">
+                📦 View Timeline
+            </button>
         </div>
     `;
     el.addEventListener('click', () => openPoliceModal(id));
@@ -533,7 +536,14 @@ function quickPoliceStatusUpdate(id, status, selectEl) {
     firebaseDB.collection('challanComplaints').doc(id).update({
         status,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastUpdatedBy: currentPoliceUser?.email || 'officer'
+        lastUpdatedBy: currentPoliceUser?.email || 'officer',
+        statusHistory: firebase.firestore.FieldValue.arrayUnion({
+            status: status,
+            title: `Status Updated`,
+            desc: `Status marked as "${status}" by Police.`,
+            timestamp: new Date(),
+            updatedBy: currentPoliceUser?.email || 'officer'
+        })
     }).then(() => {
         logPoliceActivity('status_updated', `Challan #${id.slice(0,6).toUpperCase()} status → ${status}`, id);
     }).catch(err => { showError('Failed to update status: ' + err.message); });
@@ -683,6 +693,22 @@ function openPoliceModal(id) {
                         </div>
                     </div>
 
+                    <!-- Assignment Center Row -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+                        <div>
+                            <label class="form-label" style="margin-bottom:8px;">Assign Officer / Department</label>
+                            <input type="text" id="policeModalAssign" class="form-input" 
+                                placeholder="e.g., Officer Smith / Traffic Dept" 
+                                value="${escapeHtml(data.assigneeTo || data.assignedTo || '')}" 
+                                style="width:100%;padding:12px;background:var(--bg-dark);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);">
+                        </div>
+                        <div style="display:flex;align-items:flex-end;">
+                            <button class="btn police-btn-primary" style="width:100%;padding:14px;background:rgba(131,56,236,0.2);color:#8338ec;border:1px solid rgba(131,56,236,0.4);" onclick="assignPoliceComplaint('${id}')">
+                                👤 Assign Officer/Dept
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Response Textarea -->
                     <div style="margin-bottom:16px;">
                         <label class="form-label" style="margin-bottom:8px;">Police Response / Remarks</label>
@@ -759,7 +785,14 @@ function applyPoliceModalStatus(id) {
             status: 'Rejected',
             rejectionReason: note,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            lastUpdatedBy: currentPoliceUser?.email || 'officer'
+            lastUpdatedBy: currentPoliceUser?.email || 'officer',
+            statusHistory: firebase.firestore.FieldValue.arrayUnion({
+                status: 'Rejected',
+                title: 'Complaint Rejected',
+                desc: `Rejected: ${note}`,
+                timestamp: new Date(),
+                updatedBy: currentPoliceUser?.email || 'officer'
+            })
         }).then(() => {
             logPoliceActivity('status_updated', `Challan #${id.slice(0,6).toUpperCase()} REJECTED — ${note.substring(0,60)}`, id);
             showSuccess('Complaint rejected with reason saved.');
@@ -774,6 +807,38 @@ function applyPoliceModalStatus(id) {
     const idx = allChallanData.findIndex(d => d.id === id);
     if (idx > -1) allChallanData[idx].status = newStatus;
     showSuccess(`Status updated to "${newStatus}"`);
+}
+
+function assignPoliceComplaint(id) {
+    const assignee = (document.getElementById('policeModalAssign')?.value || '').trim();
+    if (!assignee) {
+        showError('Please enter an officer name or department to assign.');
+        return;
+    }
+
+    firebaseDB.collection('challanComplaints').doc(id).update({
+        assigneeTo: assignee,
+        assignedTo: assignee,
+        status: 'Under Review', // Ensure it moves to Under Review when assigned
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        statusHistory: firebase.firestore.FieldValue.arrayUnion({
+            status: 'Under Review',
+            title: 'Complaint Assigned',
+            desc: `Complaint assigned to: ${assignee}`,
+            timestamp: new Date(),
+            updatedBy: currentPoliceUser?.email || 'officer'
+        })
+    }).then(() => {
+        logPoliceActivity('complaint_assigned', `Assigned challan #${id.slice(0,6).toUpperCase()} to ${assignee}`, id);
+        showSuccess('Complaint assigned successfully.');
+        const idx = allChallanData.findIndex(d => d.id === id);
+        if (idx > -1) { 
+            allChallanData[idx].assigneeTo = assignee; 
+            allChallanData[idx].assignedTo = assignee;
+            allChallanData[idx].status = 'Under Review';
+        }
+        closePoliceModal();
+    }).catch(err => showError('Failed to assign: ' + err.message));
 }
 
 function sendPoliceResponse(id) {
@@ -796,7 +861,14 @@ function sendPoliceResponse(id) {
     const update = {
         adminResponse: msg,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastUpdatedBy: currentPoliceUser?.email || 'officer'
+        lastUpdatedBy: currentPoliceUser?.email || 'officer',
+        statusHistory: firebase.firestore.FieldValue.arrayUnion({
+            status: status || 'Under Review',
+            title: 'Police Response Sent',
+            desc: `Official response: "${msg.substring(0, 80)}${msg.length > 80 ? '...' : ''}"`,
+            timestamp: new Date(),
+            updatedBy: currentPoliceUser?.email || 'officer'
+        })
     };
     if (status) update.status = status;
     if (status === 'Rejected') {
@@ -1081,3 +1153,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     checkPoliceAuth();
 });
+
+
